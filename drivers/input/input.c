@@ -1818,6 +1818,8 @@ int input_register_device(struct input_dev *dev)
 	struct input_handler *handler;
 	const char *path;
 	int error;
+	printk(KERN_INFO "input_register_device \n");
+
 
 	/* Every input device generates EV_SYN/SYN_REPORT events. */
 	__set_bit(EV_SYN, dev->evbit);
@@ -1877,6 +1879,8 @@ int input_register_device(struct input_dev *dev)
 	input_wakeup_procfs_readers();
 
 	mutex_unlock(&input_mutex);
+	
+	printk(KERN_INFO "%s: Device Registered \n", dev->name);
 
 	return 0;
 }

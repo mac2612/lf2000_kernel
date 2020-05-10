@@ -57,3 +57,13 @@ obj-$(CONFIG_MMC_SDHCI_OF_HLWD)		+= sdhci-of-hlwd.o
 ifeq ($(CONFIG_CB710_DEBUG),y)
 	CFLAGS-cb710-mmc	+= -DDEBUG
 endif
+
+ifeq ($(CONFIG_MMC_NEXELL),y)
+  lf2000_sdhc-objs		:= nexell_sdhc.o
+endif
+
+ifeq ($(CONFIG_MMC_MES),y)
+  lf2000_sdhc-objs		:= mes_sdhc.o
+endif
+
+obj-$(CONFIG_MMC_NEXELL_SDHC)	+= lf2000_sdhc.o

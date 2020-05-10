@@ -332,4 +332,18 @@ config ARM_KPROBES_TEST
 	help
 	  Perform tests of kprobes API and instruction set simulation.
 
+config DEBUG_LL_UART
+	bool "Kernel low-level debugging Nexell uart port"
+	depends on DEBUG_LL
+	help
+	  Say Y here if you want the debug print routines to direct their
+	  output to the Nexell uart port.
+
+config DEBUG_LL_UART_PORT
+	int "Nexell low-level uart port"
+	depends on DEBUG_LL && DEBUG_LL_UART
+	default "0"
+	help
+	  Choice for uart port for debugging kernel low-level message.
+
 endmenu

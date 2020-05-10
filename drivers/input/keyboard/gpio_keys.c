@@ -646,12 +646,14 @@ static void gpio_remove_key(struct gpio_button_data *bdata)
 
 static int __devinit gpio_keys_probe(struct platform_device *pdev)
 {
-	const struct gpio_keys_platform_data *pdata = pdev->dev.platform_data;
+	// FIXME: sesters removed 'const' pragma, may break the keys
+	// const struct gpio_keys_platform_data *pdata = pdev->dev.platform_data;
+	struct gpio_keys_platform_data *pdata = pdev->dev.platform_data;
 	struct gpio_keys_drvdata *ddata;
 	struct device *dev = &pdev->dev;
 	struct gpio_keys_platform_data alt_pdata;
 	struct input_dev *input;
-	int i, error;
+	int i, j, error;
 	int wakeup = 0;
 
 	if (!pdata) {
@@ -701,7 +703,21 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 
 		error = gpio_keys_setup_key(pdev, input, bdata, button);
 		if (error)
-			goto fail2;
+		{
+			/* Copy down the rest to eliminate bad button */
+			for(j = i + 1; j < pdata->nbuttons; j++)
+			{
+				memcpy(&pdata->buttons[i], &pdata->buttons[j],
+					sizeof(struct gpio_keys_button));
+			}
+
+			/* One less button */
+			pdata->nbuttons--;
+			ddata->n_buttons--;
+			/* Retry this index since it now has a new button in it*/
+			i--;
+			continue;
+		}
 
 		if (button->wakeup)
 			wakeup = 1;

@@ -845,4 +845,69 @@ config TOUCHSCREEN_TPS6507X
 	  To compile this driver as a module, choose M here: the
 	  module will be called tps6507x_ts.
 
+config TOUCHSCREEN_NEXELL_ADC
+	tristate "Nexell adc touchscreen (NX series)"
+	depends on ARCH_NEXELL
+	help
+	  Say Y here to enable the driver for adc touchscreen on the
+	  Nexell platform board.
+
+config TOUCHSCREEN_LF2000
+	tristate "Leapfrog adc touchscreen"
+	depends on ARCH_NEXELL
+	help
+	  Say Y here to enable the driver for adc touchscreen on a
+	  Leapfrog E2K/M2K board.
+
+config TOUCHSCREEN_ZFORCE
+	tristate "Neonode zForce touchscreen"
+	help
+	  Say Y here if you want to support a touchscreen interface using
+	  the Neonode zForce controller.
+
+	  You should select a bus connection too.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called zforce.
+
+choice
+	prompt "ZForce communication bus"
+	depends on TOUCHSCREEN_ZFORCE
+	help
+	   ZForce conteroller supports I2C,SPI and USB
+	   for the data transfer. You must select one for the core
+	   operation mode.
+	   
+config TOUCHSCREEN_ZFORCE_I2C
+	bool "support I2C bus connection"
+	depends on TOUCHSCREEN_ZFORCE && I2C
+	help
+	  Say Y here if you have a Neonode zForce hooked to an I2C bus.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called zforce-i2c.
+
+config TOUCHSCREEN_ZFORCE_SPI
+	bool "support SPI bus connection"
+	depends on TOUCHSCREEN_ZFORCE && SPI_MASTER
+	help
+	  Say Y here if you have a Neonode zForce hooked to a SPI bus.
+
+	  If unsure, say N (but it's safe to say "Y").
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called zforce-spi.
+
+config TOUCHSCREEN_ZFORCE_USB
+	bool "support USB connection"
+	depends on TOUCHSCREEN_ZFORCE && USB_ARCH_HAS_HCD
+	help
+	  Say Y here if you have a Neonode zForce hooked to a USB bus.
+
+	  If unsure, say N (but it's safe to say "Y").
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called zforce-usb.
+endchoice
+
 endif

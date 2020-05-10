@@ -5,6 +5,7 @@
 # Each configuration option enables a list of files.
 
 wm97xx-ts-y := wm97xx-core.o
+zforce_ts-y := zforce.o
 
 obj-$(CONFIG_TOUCHSCREEN_88PM860X)	+= 88pm860x-ts.o
 obj-$(CONFIG_TOUCHSCREEN_AD7877)	+= ad7877.o
@@ -69,3 +70,10 @@ obj-$(CONFIG_TOUCHSCREEN_WM97XX_MAINSTONE)	+= mainstone-wm97xx.o
 obj-$(CONFIG_TOUCHSCREEN_WM97XX_ZYLONITE)	+= zylonite-wm97xx.o
 obj-$(CONFIG_TOUCHSCREEN_W90X900)	+= w90p910_ts.o
 obj-$(CONFIG_TOUCHSCREEN_TPS6507X)	+= tps6507x-ts.o
+obj-$(CONFIG_TOUCHSCREEN_NEXELL_ADC)	+= nexell_adc_ts.o
+obj-$(CONFIG_TOUCHSCREEN_LF2000)	+= lf2000_ts.o
+obj-$(CONFIG_TOUCHSCREEN_ZFORCE)	+= zforce_ts.o
+zforce_ts-$(CONFIG_TOUCHSCREEN_ZFORCE_I2C)	+= zforce_i2c.o
+zforce_ts-$(CONFIG_TOUCHSCREEN_ZFORCE_SPI)	+= zforce_spi.o
+zforce_ts-$(CONFIG_TOUCHSCREEN_ZFORCE_USB)	+= zforce_usb.o
+obj-$(CONFIG_SOC_LFP100)			+= lfp100.o

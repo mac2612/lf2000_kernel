@@ -19,7 +19,6 @@
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
 
-
 /**
  * usb_descriptor_fillbuf - fill buffer with descriptors
  * @buf: Buffer to be filled
@@ -104,6 +103,11 @@ int usb_gadget_config_buf(
 	cp->bDescriptorType = USB_DT_CONFIG;
 	cp->wTotalLength = cpu_to_le16(len);
 	cp->bmAttributes |= USB_CONFIG_ATT_ONE;
+
+        printk(KERN_INFO "%s:%s.%d  config->bmAttributes: 0x%X, config->bMaxPower: 0x%X\n",
+                __FILE__, __func__, __LINE__,
+                cp->bmAttributes, cp->bMaxPower);
+
 	return len;
 }
 

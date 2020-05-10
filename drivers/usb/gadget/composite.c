@@ -21,6 +21,11 @@
 #include <linux/usb/composite.h>
 #include <asm/unaligned.h>
 
+#if defined (CONFIG_ARCH_NXP3200)
+#include <mach/power.h>
+#include <mach/platform_id.h>
+#endif
+
 /*
  * The code in this file is utility code, used to build a gadget driver
  * from one or more "function" drivers, one or more "configuration"
@@ -718,6 +723,22 @@ int usb_add_config(struct usb_composite_dev *cdev,
 			config->bConfigurationValue,
 			config->label, config);
 
+#if defined (CONFIG_ARCH_NXP3200)
+	printk(KERN_INFO "%s:%s.%d have_usb_power_option():0x%X\n",
+		__FILE__, __func__, __LINE__, have_usb_power_option());
+	if (have_usb_power_option()) {
+		config->bMaxPower = LF_USB_GADGET_VBUS_POWER / 2;
+		config->bmAttributes &= ~USB_CONFIG_ATT_SELFPOWER; /* bus pwr */
+	} else {
+		config->bmAttributes = USB_CONFIG_ATT_SELFPOWER;
+		config->bMaxPower = LF_USB_GADGET_VBUS_NO_POWER / 2;
+	}
+#endif
+
+	printk(KERN_INFO "%s:%s.%d  config->bmAttributes: 0x%X, config->bMaxPower: 0x%X\n",
+		__FILE__, __func__, __LINE__,
+		config->bmAttributes, config->bMaxPower);
+
 	if (!config->bConfigurationValue || !bind)
 		goto done;
 
@@ -1220,7 +1241,7 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 	default:
 unknown:
 		VDBG(cdev,
-			"non-core control req%02x.%02x v%04x i%04x l%d\n",
+			"non-core control req %02x.%02x v%04x i%04x l%d\n",
 			ctrl->bRequestType, ctrl->bRequest,
 			w_value, w_index, w_length);
 
@@ -1409,8 +1430,19 @@ static int composite_bind(struct usb_gadget *gadget)
 	 * more than 100mA from USB must report itself as bus-powered in
 	 * the GetStatus(DEVICE) call.
 	 */
+
+#if defined (CONFIG_ARCH_NXP3200)
+	if (have_usb_power_option()) {
+		if (LF_USB_GADGET_VBUS_POWER <= USB_SELF_POWER_VBUS_MAX_DRAW)
+			usb_gadget_set_selfpowered(gadget);
+	} else {
+		if (LF_USB_GADGET_VBUS_NO_POWER <= USB_SELF_POWER_VBUS_MAX_DRAW)
+			usb_gadget_set_selfpowered(gadget);
+	}
+#else
 	if (CONFIG_USB_GADGET_VBUS_DRAW <= USB_SELF_POWER_VBUS_MAX_DRAW)
 		usb_gadget_set_selfpowered(gadget);
+#endif
 
 	/* interface and string IDs start at zero via kzalloc.
 	 * we force endpoints to start unassigned; few controller

@@ -30,6 +30,8 @@
 #include <linux/mtd/mtd.h>
 #include <linux/slab.h>
 #include <linux/sched.h>
+//#include <linux/kernel.h>
+#include <linux/hardirq.h>
 
 #define PRINT_PREF KERN_INFO "mtd_torturetest: "
 #define RETRIES 3
@@ -62,6 +64,10 @@ static unsigned int cycles_count;
 module_param(cycles_count, uint, S_IRUGO);
 MODULE_PARM_DESC(cycles_count, "how many erase cycles to do "
 			       "(infinite by default)");
+
+static unsigned int cycle_stats = 0;
+module_param(cycle_stats, uint, S_IRUGO);
+MODULE_PARM_DESC(cycle_stats, "if the erase cycle statics should be collected");
 
 static struct mtd_info *mtd;
 
@@ -184,6 +190,7 @@ static inline int write_pattern(int ebnum, void *buf)
 	size_t written;
 	loff_t addr = ebnum * mtd->erasesize;
 	size_t len = mtd->erasesize;
+	unsigned long ms;
 
 	if (pgcnt) {
 		addr = (ebnum + 1) * mtd->erasesize - pgcnt * pgsize;
@@ -200,14 +207,27 @@ static inline int write_pattern(int ebnum, void *buf)
 		       " reported\n", written, len);
 		return -EIO;
 	}
-
 	return 0;
 }
+
+#define NUM_LONG_CYCLES	5	/* report the longest cycles to date */
+struct cycle_data {
+	int erase_cycle;
+	unsigned long ms;
+};
+
 
 static int __init tort_init(void)
 {
 	int err = 0, i, infinite = !cycles_count;
 	int bad_ebs[ebcnt];
+	struct cycle_data long_cycles[NUM_LONG_CYCLES];
+
+	/* initialize list, note it is kept sorted from largest to smallest cycle time */
+	for (i=0; i < NUM_LONG_CYCLES; i++) {
+		long_cycles[i].erase_cycle = -1;
+		long_cycles[i].ms = 0;
+	}
 
 	printk(KERN_INFO "\n");
 	printk(KERN_INFO "=================================================\n");
@@ -215,7 +235,7 @@ static int __init tort_init(void)
 	       "flash, stop it if this is not wanted.\n");
 
 	if (dev < 0) {
-		printk(PRINT_PREF "Please specify a valid mtd-device via module paramter\n");
+		printk(PRINT_PREF "Please specify a valid mtd-device via module parameter\n");
 		printk(KERN_CRIT "CAREFUL: This test wipes all data on the specified MTD device!\n");
 		return -EINVAL;
 	}
@@ -312,6 +332,8 @@ static int __init tort_init(void)
 		int i;
 		void *patt;
 
+		long ms;
+
 		/* Erase all eraseblocks */
 		for (i = eb; i < eb + ebcnt; i++) {
 			if (bad_ebs[i - eb])
@@ -372,17 +394,55 @@ static int __init tort_init(void)
 			}
 		}
 
+		stop_timing();
+		ms = (finish.tv_sec - start.tv_sec) * 1000 +
+		     (finish.tv_usec - start.tv_usec) / 1000;
+
+		/* does this cycle time belong in the list? */
+		if (cycle_stats && long_cycles[NUM_LONG_CYCLES - 1].ms < ms) {
+			/* yes, add this cycle data to the list, now find it's spot */
+			for (i = NUM_LONG_CYCLES - 2; 0 <= i; i--) {
+				if (long_cycles[i].ms < ms) {
+					/* new cycle data is larger, move older data down in the list */
+					long_cycles[i+1].ms          = long_cycles[i].ms;
+					long_cycles[i+1].erase_cycle = long_cycles[i].erase_cycle;
+					if (0 == i) {	/* handle case where new value is at start of list */
+						long_cycles[i].ms	    = ms;
+						long_cycles[i].erase_cycle = erase_cycles;
+					}
+				} else {
+					/* put new value in the list and end sort */
+					long_cycles[i+1].ms	    = ms;
+					long_cycles[i+1].erase_cycle = erase_cycles;
+					break;
+				}
+			}
+		}
+
 		erase_cycles += 1;
 
 		if (erase_cycles % gran == 0) {
 			long ms;
 
-			stop_timing();
+			// stop_timing();
 			ms = (finish.tv_sec - start.tv_sec) * 1000 +
 			     (finish.tv_usec - start.tv_usec) / 1000;
 			printk(PRINT_PREF "%08u erase cycles done, took %lu "
 			       "milliseconds (%lu seconds)\n",
 			       erase_cycles, ms, ms / 1000);
+
+			if (cycle_stats) {
+				/* print cycle totals to date */
+				printk(PRINT_PREF "longest cycles: ");
+				for (i = 0; i < NUM_LONG_CYCLES; i++) {
+					if (long_cycles[i].ms == 0)
+						break;	/* entry is empty, at end of list */
+					printk( PRINT_PREF "    ms:%lu, cycle:%u",
+						long_cycles[i].ms,
+						long_cycles[i].erase_cycle);
+				}
+			}
+
 			start_timing();
 		}
 

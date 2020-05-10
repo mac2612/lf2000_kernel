@@ -2239,6 +2239,69 @@ config FB_DA8XX
 	  found on DA8xx/OMAP-L1xx SoCs.
 	  If unsure, say N.
 
+config FB_NEXELL
+	tristate "Nexell framebuffer support (NX series)"
+	depends on FB && ARCH_NEXELL
+	select FB_CFB_FILLRECT
+	select FB_CFB_COPYAREA
+	select FB_CFB_IMAGEBLIT
+	---help---
+	  Frame buffer driver for the built-in display controller in the Nexell Co.
+	  NX series processor.
+	  Say Y here to enable support for the display adaptor.
+
+config FB_NEXELL_PRIMARY
+	bool "Support primary frame buffer fb0"
+	depends on FB_NEXELL
+		default y
+
+config FB_NEXELL_SECONDARY
+	bool "Support secondary frame buffer fb1"
+	depends on FB_NEXELL
+		default n
+
+config FB_NEXELL_CLONE
+	bool "Support clone frame buffer"
+	select FB_NEXELL_PRIMARY
+	select FB_NEXELL_SECONDARY
+	depends on FB_NEXELL
+		default n
+
+choice
+	prompt "Nexell framebuffer driver"
+	default FB_NEXELL_OEM
+	depends on FB_NEXELL
+	help
+		Select Nexell framebuffer driver based on ARCH_NEXELL BSP.
+		Each driver depends on ARCH_NEXELL BSP framework, and identified as
+		"nx-fb" framebuffer driver to the ARCH_NEXELL platform.
+
+config FB_NEXELL_OEM
+	bool "Nexell OEM framebuffer driver"
+	depends on FB_NEXELL
+	help
+		Selects original Nexell framebuffer driver included in BSP.
+
+config FB_LF1000
+	bool "LF1000 framebuffer driver"
+	depends on FB_NEXELL
+	help 
+		Selects LF1000 framebuffer driver ported for the Nexell HW.
+	
+config FB_LF2000
+	bool "LF2000 framebuffer driver"
+	depends on FB_NEXELL
+	help
+		Selects LF2000 framebuffer driver based on original Nexell driver,
+		modified to support /dev/fb layer functionality for LF1000 compatibilty.
+
+endchoice
+
+config FB_NEXELL_LF1000_EXTENSION
+	bool "Support LF1000 frame buffer extensions"
+	depends on FB_NEXELL
+		default n
+
 config FB_VIRTUAL
 	tristate "Virtual Frame Buffer support (ONLY FOR TESTING!)"
 	depends on FB
@@ -2435,5 +2498,9 @@ config FB_SH_MOBILE_MERAM
 	  reliable access under heavy main memory bus traffic situations.
 	  Up to 4 memory channels can be configured, allowing 4 RGB or
 	  2 YCbCr framebuffers to be configured.
+
+if ARCH_NEXELL
+source "drivers/video/nexell/Kconfig"
+endif
 
 endmenu

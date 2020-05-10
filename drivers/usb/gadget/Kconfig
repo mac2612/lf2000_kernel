@@ -125,6 +125,7 @@ config USB_GADGET_STORAGE_NUM_BUFFERS
 #
 choice
 	prompt "USB Peripheral Controller"
+	depends on USB_GADGET && !USB_DWC_OTG
 	help
 	   A USB device uses a controller to talk to its host.
 	   Systems should have only one such upstream link.
@@ -297,6 +298,26 @@ config USB_S3C2410_DEBUG
 	boolean "S3C2410 udc debug messages"
 	depends on USB_S3C2410
 
+config USB_GADGET_NEXELL_OTGD
+	boolean "NEXELL HS USB OTG Device"
+	depends on (ARCH_NXP3200)
+	help
+	  Samsung's processors include high speed USB OTG2.0
+	  controller. It has 15 configurable endpoints, as well as
+	  endpoint zero (for control transfers).
+
+          Say "y" to link the driver statically, or "m" to build a
+          dynamically linked module called "s3c-udc-otg" and force all
+          gadget drivers to also be dynamically linked.
+
+config USB_GADGET_LF2000_OTGD
+	boolean "LF2000 HS USB OTG Device"
+	depends on (ARCH_NXP3200)
+	help
+	  Based on Samsung HS USB OTG2.0 controller
+
+	  Say "y" to link driver into kernel, or "m" to build a module
+
 config USB_S3C_HSUDC
 	tristate "S3C2416, S3C2443 and S3C2450 USB Device Controller"
 	depends on ARCH_S3C24XX
@@ -315,6 +336,18 @@ config USB_MV_UDC
 	  Marvell Socs (including PXA and MMP series) include a high speed
 	  USB2.0 OTG controller, which can be configured as high speed or
 	  full speed USB peripheral.
+
+config USB_GADGET_DWC3
+	tristate "DesignWare USB3.0 (DRD) Controller"
+	depends on USB_DWC3
+	select USB_GADGET_DUALSPEED
+	select USB_GADGET_SUPERSPEED
+	help
+	  DesignWare USB3.0 controller is a SuperSpeed USB3.0 Controller
+	  which can be configured for peripheral-only, host-only, hub-only
+	  and Dual-Role operation. This Controller was first integrated into
+	  the OMAP5 series of processors. More information about the OMAP5
+	  version of this controller, refer to http://www.ti.com/omap5.
 
 #
 # Controllers available in both integrated and discrete versions
@@ -494,6 +527,20 @@ config USB_CI13XXX_MSM
 	  dynamically linked module called "ci13xxx_msm" and force all
 	  gadget drivers to also be dynamically linked.
 
+config USB_GADGET_SNPS_DWC_OTG
+	boolean "Synopsys Driver for DWC_otg Controller"
+	depends on USB
+	select USB_GADGET_DUALSPEED
+	help
+	   Selects the Synopsys Driver for the DWC_otg Controller.
+
+config USB_DWC_OTG_LPM
+	boolean "Enable LPM support"
+	depends on USB
+	select USB_GADGET_DUALSPEED
+	help
+	   Enables LPM support.
+
 #
 # LAST -- dummy/emulated controller
 #
@@ -527,6 +574,78 @@ config USB_DUMMY_HCD
 
 endchoice
 
+comment "NOTE: Nexell OTG device role enables the controller driver below"
+	depends on USB_GADGET_NEXELL_OTGD
+
+config USB_NEXELL_OTGD
+	tristate "Nexell high speed(2.0, dual-speed) USB OTG device"
+        depends on USB_GADGET && USB_GADGET_NEXELL_OTGD
+	default y
+	default USB_GADGET
+	select USB_GADGET_DUALSPEED
+        help
+           Say "y" to link the driver statically, or "m" to build a
+           dynamically linked module called "s3c-udc-otg-hs" and force all
+           gadget drivers to also be dynamically linked.
+
+choice
+	prompt "Nexell OTGD transfer mode"
+	depends on USB_NEXELL_OTGD
+	default y
+	help
+	   Nexell USB OTG conteroller supports DMA mode and Slave mode
+	   for the data transfer. You must select one for the core
+	   operation mode.
+
+config USB_GADGET_NEXELL_OTGD_DMA_MODE
+	bool "enabled DMA MODE"
+	depends on USB_GADGET_NEXELL_OTGD
+	help
+	   Nexell USB OTG core operates in DMA mode.
+
+config USB_GADGET_NEXELL_OTGD_SLAVE_MODE
+	bool "enabled Slave MODE"
+	depends on USB_GADGET_NEXELL_OTGD
+	help
+	   Nexell USB OTG core operates in Slave mode.
+endchoice
+
+comment "NOTE: LF2000 OTG device role enables the controller driver below"
+	depends on USB_GADGET_LF2000_OTGD
+
+config USB_LF2000_OTGD
+	tristate "LF2000 high speed(2.0, dual-speed) USB OTG device"
+        depends on USB_GADGET && USB_GADGET_LF2000_OTGD
+	default y
+	default USB_GADGET
+	select USB_GADGET_DUALSPEED
+        help
+           Say "y" to link the driver statically, or "m" to build a
+           dynamically linked module called "s3c-udc-otg-hs" and force all
+           gadget drivers to also be dynamically linked.
+
+choice
+	prompt "LF2000 OTGD transfer mode"
+	depends on USB_LF2000_OTGD
+	default y
+	help
+	   LF2000 USB OTG controller supports DMA mode and Slave mode
+	   for the data transfer. You must select one for the core
+	   operation mode.
+
+config USB_GADGET_LF2000_OTGD_DMA_MODE
+	bool "enabled DMA MODE"
+	depends on USB_GADGET_LF2000_OTGD
+	help
+	   LF2000 USB OTG core operates in DMA mode.
+
+config USB_GADGET_LF2000_OTGD_SLAVE_MODE
+	bool "enabled Slave MODE"
+	depends on USB_GADGET_LF2000_OTGD
+	help
+	   LF2000 USB OTG core operates in Slave mode.
+endchoice
+
 # Selected by UDC drivers that support high-speed operation.
 config USB_GADGET_DUALSPEED
 	bool
@@ -541,6 +660,7 @@ config USB_GADGET_SUPERSPEED
 #
 choice
 	tristate "USB Gadget Drivers"
+	depends on USB_GADGET
 	default USB_ETH
 	help
 	  A Linux "Gadget Driver" talks to the USB Peripheral Controller

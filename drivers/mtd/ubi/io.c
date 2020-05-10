@@ -217,7 +217,13 @@ retry:
 			err = UBI_IO_BITFLIPS;
 		}
 	}
-
+#if 1	/* 4apr12  Changed to trigger scrubbing of a block on which retries   */
+	/*	   were needed, even if retry succeeded and did not encounter */
+	/* enough correctable bitflips to trigger scrubbing.                  */
+	if ((0 == err) && (retries > 0)) {
+		err = UBI_IO_BITFLIPS;
+	}
+#endif
 	return err;
 }
 
@@ -1029,8 +1035,10 @@ int ubi_io_read_vid_hdr(struct ubi_device *ubi, int pnum,
 	ubi_assert(pnum >= 0 &&  pnum < ubi->peb_count);
 
 	p = (char *)vid_hdr - ubi->vid_hdr_shift;
+	/* read only as many bytes as necessary. */
 	read_err = ubi_io_read(ubi, p, pnum, ubi->vid_hdr_aloffset,
-			  ubi->vid_hdr_alsize);
+			  UBI_VID_HDR_SIZE);
+
 	if (read_err && read_err != UBI_IO_BITFLIPS && !mtd_is_eccerr(read_err))
 		return read_err;
 

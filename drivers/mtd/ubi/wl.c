@@ -1223,7 +1223,11 @@ int ubi_wl_scrub_peb(struct ubi_device *ubi, int pnum)
 {
 	struct ubi_wl_entry *e;
 
+#if 0	/* Linux distribution */
 	dbg_msg("schedule PEB %d for scrubbing", pnum);
+#else	/* 2013/9/30  Just for debugging */
+	ubi_msg("schedule PEB %d for scrubbing", pnum);
+#endif
 
 retry:
 	spin_lock(&ubi->wl_lock);

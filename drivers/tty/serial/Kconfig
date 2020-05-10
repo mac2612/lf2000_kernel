@@ -1324,6 +1324,43 @@ config SERIAL_XILINX_PS_UART_CONSOLE
 	help
 	  Enable a Xilinx PS UART port to be the system console.
 
+config SERIAL_NEXELL_UART
+	bool "Nexell serial port support (Nexell Series)"
+	depends on ARM && ARCH_NEXELL
+	select SERIAL_CORE
+	select SERIAL_CORE_CONSOLE
+	help
+
+config SERIAL_NEXELL_UART_PORT0
+	bool "Nexell serial port 0"
+	depends on SERIAL_NEXELL_UART
+		default y
+
+config SERIAL_NEXELL_UART_PORT1
+	bool "Nexell serial port 1"
+	depends on SERIAL_NEXELL_UART
+		default n
+
+config SERIAL_NEXELL_UART_PORT2
+	bool "Nexell serial port 2"
+	depends on SERIAL_NEXELL_UART
+		default n
+
+config SERIAL_NEXELL_UART_PORT3
+	bool "Nexell serial port 3"
+	depends on SERIAL_NEXELL_UART
+		default n
+
+config SERIAL_NEXELL_UART_PORT4
+	bool "Nexell serial port 4"
+	depends on SERIAL_NEXELL_UART
+		default n
+
+config SERIAL_NEXELL_UART_PORT5
+	bool "Nexell serial port 5"
+	depends on SERIAL_NEXELL_UART
+		default n
+
 config SERIAL_AR933X
 	bool "AR933X serial port support"
 	depends on SOC_AR933X

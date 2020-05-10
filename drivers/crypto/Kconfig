@@ -256,6 +256,13 @@ config CRYPTO_DEV_OMAP_AES
 	help
 	  OMAP processors have AES module accelerator. Select this if you
 	  want to use the OMAP module for AES algorithms.
+	  
+config CRYPTO_DEV_NXP3200
+	tristate "Support for nxp3200 AES decryption hw"
+	depends on ARCH_NXP3200
+	help
+	  Select this to build the dev node aes decryption driver for nxp3200
+	  chips. This driver does not hook into the crypto api at all.
 
 config CRYPTO_DEV_PICOXCELL
 	tristate "Support for picoXcell IPSEC and Layer2 crypto engines"

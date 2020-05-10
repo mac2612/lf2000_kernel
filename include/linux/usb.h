@@ -1262,6 +1262,9 @@ struct urb {
 	unsigned int transfer_flags;	/* (in) URB_SHORT_NOT_OK | ...*/
 	void *transfer_buffer;		/* (in) associated data buffer */
 	dma_addr_t transfer_dma;	/* (in) dma addr for transfer_buffer */
+	void *aligned_transfer_buffer;	/* (in) associeated data buffer */
+	dma_addr_t aligned_transfer_dma;/* (in) dma addr for transfer_buffer */
+	u32 aligned_transfer_buffer_length; /* (in) data buffer length */
 	struct scatterlist *sg;		/* (in) scatter gather buffer list */
 	int num_mapped_sgs;		/* (internal) mapped sg entries */
 	int num_sgs;			/* (in) number of entries in the sg list */

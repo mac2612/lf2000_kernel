@@ -553,6 +553,17 @@ config INPUT_ADXL34X_SPI
 	  To compile this driver as a module, choose M here: the
 	  module will be called adxl34x-spi.
 
+config INPUT_LF2000_ACLMTR
+	tristate "LF2000 Accelerometer support"
+	depends on (!PLAT_NXP3200_VTK) && I2C
+	default n
+	help
+	  Accelerometer driver for the LF2000 platform.
+	  Connects via I2C to Bosch BMA220 device.
+	  Driver is called lf2000-aclmtr for platform compatibility.
+	  Say Y here to enable accelerometer support, or M to build
+	  the driver as a module.
+
 config INPUT_CMA3000
 	tristate "VTI CMA3000 Tri-axis accelerometer"
 	help

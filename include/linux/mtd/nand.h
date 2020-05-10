@@ -56,7 +56,7 @@ extern int nand_unlock(struct mtd_info *mtd, loff_t ofs, uint64_t len);
  * is supported now. If you add a chip with bigger oobsize/page
  * adjust this accordingly.
  */
-#define NAND_MAX_OOBSIZE	576
+#define NAND_MAX_OOBSIZE	640	/* for Samsung K9GBG08U0A */
 #define NAND_MAX_PAGESIZE	8192
 
 /*
@@ -214,6 +214,9 @@ typedef enum {
 /* Large page NAND with SOFT_ECC should support subpage reads */
 #define NAND_SUBPAGE_READ(chip) ((chip->ecc.mode == NAND_ECC_SOFT) \
 					&& (chip->page_shift > 9))
+
+/* Mask to zero out the chip options, which come from the id table */
+#define NAND_CHIPOPTIONS_MSK	(0x0000ffff & ~NAND_NO_AUTOINCR)
 
 /* Non chip related options */
 /* This option skips the bbt scan during initialization. */

@@ -1041,6 +1041,12 @@ config RTC_DRV_LPC32XX
 	  This driver can also be buillt as a module. If so, the module
 	  will be called rtc-lpc32xx.
 
+config RTC_DRV_LF2000
+	tristate "LF2000 RTC"
+	depends on ARCH_NXP3200
+	help
+	  RTC driver for LeapFrog LF2000 (NXP3200)
+
 config RTC_DRV_PM8XXX
 	tristate "Qualcomm PMIC8XXX RTC"
 	depends on MFD_PM8XXX

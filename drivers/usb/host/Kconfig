@@ -613,6 +613,21 @@ config USB_IMX21_HCD
          To compile this driver as a module, choose M here: the
          module will be called "imx21-hcd".
 
+config USB_NEXELL_OTG_HOST
+        tristate "NEXELL USB OTG Host support"
+        depends on USB && ARCH_NXP3200
+        help
+          Nexell's NXP3200 processors include high speed USB OTG2.0
+          controller. It has 15 configurable endpoints, as well as
+          endpoint zero (for control transfers).
+
+          This driver support only OTG Host role. If you want to use
+          OTG Device role, select USB Gadget support and S3C OTG Device.
+
+          Say "y" to link the driver statically, or "m" to build a
+          dynamically linked module called "s3c_otg_hcd" and force all
+          drivers to also be dynamically linked.
+
 config USB_OCTEON_EHCI
 	bool "Octeon on-chip EHCI support"
 	depends on USB && USB_EHCI_HCD && CPU_CAVIUM_OCTEON

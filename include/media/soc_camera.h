@@ -96,10 +96,18 @@ struct soc_camera_host_ops {
 	int (*reqbufs)(struct soc_camera_device *, struct v4l2_requestbuffers *);
 	int (*querycap)(struct soc_camera_host *, struct v4l2_capability *);
 	int (*set_bus_param)(struct soc_camera_device *);
+	int (*get_ctrl)(struct soc_camera_device *, struct v4l2_control *);
+	int (*set_ctrl)(struct soc_camera_device *, struct v4l2_control *);
 	int (*get_parm)(struct soc_camera_device *, struct v4l2_streamparm *);
 	int (*set_parm)(struct soc_camera_device *, struct v4l2_streamparm *);
 	int (*enum_fsizes)(struct soc_camera_device *, struct v4l2_frmsizeenum *);
 	unsigned int (*poll)(struct file *, poll_table *);
+	int (*overlay)(struct soc_camera_host *, const unsigned int);
+	int (*get_fbuf)(struct soc_camera_host *, struct v4l2_framebuffer *);
+	int (*set_fbuf)(struct soc_camera_host *, const struct v4l2_framebuffer *);
+
+	const struct v4l2_queryctrl *controls;
+	int num_controls;
 };
 
 #define SOCAM_SENSOR_INVERT_PCLK	(1 << 0)

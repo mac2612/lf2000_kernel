@@ -1105,6 +1105,11 @@ MODULE_LICENSE ("GPL");
 #define PLATFORM_DRIVER		ohci_octeon_driver
 #endif
 
+#ifdef CONFIG_ARCH_NEXELL
+#include "ohci-nexell.c"
+#define PLATFORM_DRIVER		ohci_hcd_nexell_driver
+#endif
+
 #ifdef CONFIG_USB_CNS3XXX_OHCI
 #include "ohci-cns3xxx.c"
 #define PLATFORM_DRIVER		ohci_hcd_cns3xxx_driver

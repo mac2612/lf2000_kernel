@@ -444,8 +444,15 @@ retry:
 			scrub = 1;
 			err = 0;
 		} else if (mtd_is_eccerr(err)) {
+#if 0	/* Linux distribution */
 			if (vol->vol_type == UBI_DYNAMIC_VOLUME)
 				goto out_unlock;
+#else	/* 2013/9/30; might be good idea to force torture testing of pnum */
+			if (vol->vol_type == UBI_DYNAMIC_VOLUME) {
+				ubi_wl_scrub_peb( ubi, pnum );
+				goto out_unlock;
+			}
+#endif
 			scrub = 1;
 			if (!check) {
 				ubi_msg("force data checking");

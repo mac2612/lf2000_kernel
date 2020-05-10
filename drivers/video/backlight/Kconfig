@@ -184,6 +184,14 @@ config BACKLIGHT_GENERIC
 	  known as the Corgi backlight driver. If you have a Sharp Zaurus
 	  SL-C7xx, SL-Cxx00 or SL-6000x say y.
 
+config BACKLIGHT_LF2000
+	tristate "LF2000 PWM backlight control"
+	depends on ARCH_NXP3200 && FB_LF2000
+	default y
+	help
+	  Say Y here if you want PWM backlight control on LeapFrog boards.  To
+	  compile as a module, choose M.
+
 config BACKLIGHT_LOCOMO
 	tristate "Sharp LOCOMO LCD/Backlight Driver"
 	depends on SHARP_LOCOMO

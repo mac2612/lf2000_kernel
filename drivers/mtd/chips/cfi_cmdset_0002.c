@@ -82,6 +82,13 @@ static struct mtd_chip_driver cfi_amdstd_chipdrv = {
 };
 
 
+/* Protect NOR from accidental erasure: addresses LOWER than this
+ * address are blocked from erase or write commands and will return
+ * -EPERM.  See ../nand/lf1000.c for the sysfs entry that controls
+ * this.
+ */
+extern u32 nor_write_addr_threshold;
+
 /* #define DEBUG_CFI_FEATURES */
 
 
@@ -1245,6 +1252,11 @@ static int cfi_amdstd_write_words(struct mtd_info *mtd, loff_t to, size_t len,
 	unsigned long ofs, chipstart;
 	DECLARE_WAITQUEUE(wait, current);
 
+	/* Protect NOR from accidental erasure/writes: addresses
+	   LOWER than this fail*/
+	if (to < nor_write_addr_threshold)
+		return -EPERM;
+
 	chipnum = to >> cfi->chipshift;
 	ofs = to  - (chipnum << cfi->chipshift);
 	chipstart = cfi->chips[chipnum].start;
@@ -1971,6 +1983,11 @@ static int cfi_amdstd_erase_varsize(struct mtd_info *mtd, struct erase_info *ins
 	unsigned long ofs, len;
 	int ret;
 
+	/* Protect NOR from accidental erasure: addresses LOWER than
+	   this fail*/
+	if (instr->addr < nor_write_addr_threshold)
+		return -EPERM;
+
 	ofs = instr->addr;
 	len = instr->len;
 
@@ -1996,6 +2013,11 @@ static int cfi_amdstd_erase_chip(struct mtd_info *mtd, struct erase_info *instr)
 
 	if (instr->len != mtd->size)
 		return -EINVAL;
+
+	/* Protect NOR from accidental erasure: addresses LOWER than
+	   this fail*/
+	if (instr->addr < nor_write_addr_threshold)
+		return -EPERM;
 
 	ret = do_erase_chip(map, &cfi->chips[0]);
 	if (ret)

@@ -650,6 +650,17 @@ config ARCH_KS8695
 	  Support for Micrel/Kendin KS8695 "Centaur" (ARM922T) based
 	  System-on-Chip devices.
 
+config ARCH_NXP3200
+	bool "Nexell P3200"
+	select CPU_V7
+	select GENERIC_TIME
+	select GENERIC_CLOCKEVENTS
+	select ZONE_DMA
+	select ARCH_REQUIRE_GPIOLIB
+	select NEED_MACH_MEMORY_H
+	help
+	  Support for Nexell's SoC platform
+
 config ARCH_W90X900
 	bool "Nuvoton W90X900 CPU"
 	select CPU_ARM926T
@@ -987,6 +998,7 @@ config PLAT_SPEAR
 	help
 	  Support for ST's SPEAr platform (SPEAr3xx, SPEAr6xx and SPEAr13xx).
 
+
 config ARCH_VT8500
 	bool "VIA/WonderMedia 85xx"
 	select CPU_ARM926T
@@ -1127,6 +1139,14 @@ source "arch/arm/plat-versatile/Kconfig"
 source "arch/arm/mach-vt8500/Kconfig"
 
 source "arch/arm/mach-w90x900/Kconfig"
+
+if ARCH_NXP3200
+source "arch/arm/mach-nxp3200/Kconfig"
+endif
+
+if ARCH_NEXELL
+source "kernel/Kconfig.hz"
+endif
 
 # Definitions to make life easier
 config ARCH_ACORN

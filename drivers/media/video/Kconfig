@@ -1051,6 +1051,39 @@ config SOC_CAMERA_OV9640
 	help
 	  This is a ov9640 camera driver
 
+config SOC_CAMERA_HYNIX
+	tristate "Hynix camera support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This is a V4L2 SoC camera driver for sensors in the Hynix YAC family.
+	  The module will be called 'hynix_yac'.  Enable support for at least
+	  one sensor below.
+
+config SOC_CAMERA_HYNIX_DEBUGFS
+	bool "debugfs entries for Hynix YAC family sensors"
+	depends on SOC_CAMERA_HYNIX && DEBUG_FS
+	---help---
+	  Enable register dumps.
+
+config SOC_CAMERA_HYNIX_SYSFS
+	bool "sysfs entries for Hynix YAC family sensors"
+	depends on SOC_CAMERA_HYNIX && SYSFS
+	---help---
+	  Current available values:
+	  -hblank: {HBLANKH[3:0], HBLANKL[7:0]}
+
+config SOC_CAMERA_SR300PC10
+	bool "SiliconFile SR300PC10 driver"
+	depends on SOC_CAMERA_HYNIX
+	help
+	  Support for the SR300PC10 (Hynix YACE4B1S?) imager.
+
+config SOC_CAMERA_HI253
+	bool "Hynix YACD511SBDBS [Hi-253] driver"
+	depends on SOC_CAMERA_HYNIX
+	help
+	  Support for the Hi-253 imager.
+
 config SOC_CAMERA_OV9740
 	tristate "ov9740 camera support"
 	depends on SOC_CAMERA && I2C
@@ -1157,6 +1190,61 @@ config VIDEO_S5P_MIPI_CSIS
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called s5p-csis.
+
+config VIDEO_LF2000
+	tristate "LF2000 Video Input Port (VIP) driver"
+	depends on VIDEO_V4L2 && SOC_CAMERA && ARCH_NEXELL
+	select VIDEOBUF_DMA_CONTIG
+	select VIDEO_LF2000_DOUBLEBUF
+	---help---
+	  This is a v4l2 driver for the LF2000 video input port, used to
+	  access external image sensors, i.e., cameras, and other video
+	  sources, e.g., TV tuners.
+
+config VIDEO_LF2000_DOUBLEBUF
+	bool "Overlay double buffering for LF2000 video input port"
+	depends on VIDEO_LF2000 && (FB_LF1000 || FB_LF2000)
+	---help---
+	  Enable optional double buffering for camera overlay.
+
+config VIDEO_LF2000_DEBUGFS
+	bool "debugfs entries for LF2000 video input port"
+	depends on VIDEO_LF2000 && DEBUG_FS
+	---help---
+	  Enable register dumps.
+
+config VIDEO_LF2000_SYSFS
+	bool "sysfs entries for LF2000 video input port"
+	depends on VIDEO_LF2000 && SYSFS
+	---help---
+	  Current available values:
+	  -frame_count: running frame counter
+	  -hfp/hsw/hbp, vfp/vsw/vbp: horizontal/vertical front porch/sync
+	   width/back porch.  FOR EXPERIMENTATION - EDIT AT YOUR OWN RISK
+	  -skip_frames: number of initial bad frames to skip
+
+choice
+	prompt "Driver version"
+	default VIDEO_LF2000_1
+	depends on VIDEO_LF2000
+	help
+		Select version of VIP driver.
+
+config VIDEO_LF2000_1
+	bool "Original VIP driver"
+	depends on VIDEO_LF2000
+	help
+		Selects original VIP driver, using both clipper and decimator
+		for output.
+
+config VIDEO_LF2000_2
+	bool "Workaround VIP driver"
+	depends on VIDEO_LF2000
+	help
+		Selects experimental VIP driver, using only clipper with 
+		planar-only output.
+
+endchoice
 
 source "drivers/media/video/s5p-tv/Kconfig"
 

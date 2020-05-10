@@ -256,7 +256,10 @@
 
 #include "gadget_chips.h"
 
-
+#if defined (CONFIG_ARCH_NXP3200)
+#include <mach/power.h>
+#include <mach/platform_id.h>
+#endif
 
 /*
  * Kbuild is not very cooperative with respect to linking separately
@@ -280,7 +283,6 @@ static const char fsg_string_product[] = DRIVER_DESC;
 static const char fsg_string_config[] = "Self-powered";
 static const char fsg_string_interface[] = "Mass Storage";
 
-
 #include "storage_common.c"
 
 
@@ -293,7 +295,6 @@ MODULE_LICENSE("Dual BSD/GPL");
  * trigger remote wakeup.  It uses autoconfiguration to select endpoints
  * and endpoint addresses.
  */
-
 
 /*-------------------------------------------------------------------------*/
 
@@ -625,6 +626,16 @@ static int populate_config_buf(struct usb_gadget *gadget,
 	/* for now, don't advertise srp-only devices */
 	if (!gadget_is_otg(gadget))
 		function++;
+
+#if defined (CONFIG_ARCH_NXP3200)
+        if (have_usb_power_option()) {
+                config_desc.bmAttributes &= ~USB_CONFIG_ATT_SELFPOWER; /* bus pwr */
+                config_desc.bMaxPower = LF_USB_GADGET_VBUS_POWER / 2;
+        } else {
+                config_desc.bmAttributes = USB_CONFIG_ATT_SELFPOWER;
+                config_desc.bMaxPower = LF_USB_GADGET_VBUS_NO_POWER / 2;
+        }
+#endif
 
 	len = usb_gadget_config_buf(&config_desc, buf, EP0_BUFSIZE, function);
 	((struct usb_config_descriptor *) buf)->bDescriptorType = type;
@@ -1601,10 +1612,38 @@ static int do_inquiry(struct fsg_dev *fsg, struct fsg_buffhd *bh)
 	buf[3] = 2;		// SCSI-2 INQUIRY data format
 	buf[4] = 31;		// Additional length
 				// No special options
+				
+
+#ifdef CONFIG_ARCH_NXP3200
+	switch(get_leapfrog_platform())
+	{
+		case LUCY:
+			sprintf(buf + 8, "%-8s%-16s%04x", "LeapFrog",
+				(mod_data.cdrom ? product_cdrom_id :
+					PRODUCT_ID_VOL_LUCY),
+				mod_data.release);
+			break;
+		case RIO:
+			sprintf(buf + 8, "%-8s%-16s%04x", "LeapFrog",
+				(mod_data.cdrom ? product_cdrom_id :
+					PRODUCT_ID_VOL_RIO),
+				mod_data.release);
+			break;
+		case VALENCIA:
+			sprintf(buf + 8, "%-8s%-16s%04x", "LeapFrog",
+				(mod_data.cdrom ? product_cdrom_id :
+					PRODUCT_ID_VOL_VALENCIA),
+				mod_data.release);
+			break;
+		default:
+			break;
+	}
+#else
 	sprintf(buf + 8, "%-8s%-16s%04x", vendor_id,
 			(mod_data.cdrom ? product_cdrom_id :
 				product_disk_id),
 			mod_data.release);
+#endif
 	return 36;
 }
 
@@ -1963,6 +2002,37 @@ static int wedge_bulk_in_endpoint(struct fsg_dev *fsg)
 	return rc;
 }
 
+static int pad_with_zeros(struct fsg_dev *fsg)
+{
+	struct fsg_buffhd	*bh = fsg->next_buffhd_to_fill;
+	u32			nkeep = bh->inreq->length;
+	u32			nsend;
+	int			rc;
+
+	bh->state = BUF_STATE_EMPTY;		// For the first iteration
+	fsg->usb_amount_left = nkeep + fsg->residue;
+	while (fsg->usb_amount_left > 0) {
+
+		/* Wait for the next buffer to be free */
+		while (bh->state != BUF_STATE_EMPTY) {
+			rc = sleep_thread(fsg);
+			if (rc)
+				return rc;
+		}
+
+		nsend = min(fsg->usb_amount_left, (u32) mod_data.buflen);
+		memset(bh->buf + nkeep, 0, nsend - nkeep);
+		bh->inreq->length = nsend;
+		bh->inreq->zero = 0;
+		start_transfer(fsg, fsg->bulk_in, bh->inreq,
+				&bh->inreq_busy, &bh->state);
+		bh = fsg->next_buffhd_to_fill = bh->next;
+		fsg->usb_amount_left -= nsend;
+		nkeep = 0;
+	}
+	return 0;
+}
+
 static int throw_away_data(struct fsg_dev *fsg)
 {
 	struct fsg_buffhd	*bh;
@@ -2074,13 +2144,29 @@ static int finish_reply(struct fsg_dev *fsg)
 		 * specification, which requires us to pad the data if we
 		 * don't halt the endpoint.  Presumably nobody will mind.)
 		 */
-		else {
+		/*else {
 			bh->inreq->zero = 1;
 			start_transfer(fsg, fsg->bulk_in, bh->inreq,
 					&bh->inreq_busy, &bh->state);
 			fsg->next_buffhd_to_fill = bh->next;
 			if (mod_data.can_stall)
 				rc = halt_bulk_in_endpoint(fsg);
+		}
+		break;
+		*/
+
+		/* For Bulk-only, if we're allowed to stall then send the
+		 * short packet and halt the bulk-in endpoint.  If we can't
+		 * stall, pad out the remaining data with 0's. */
+		else {
+			if (mod_data.can_stall) {
+				bh->inreq->zero = 1;
+				start_transfer(fsg, fsg->bulk_in, bh->inreq,
+						&bh->inreq_busy, &bh->state);
+				fsg->next_buffhd_to_fill = bh->next;
+				rc = halt_bulk_in_endpoint(fsg);
+			} else
+				rc = pad_with_zeros(fsg);
 		}
 		break;
 
@@ -2876,7 +2962,7 @@ reset:
  *
  * It's also responsible for power management interactions.  Some
  * configurations might not work with our current power sources.
- * For now we just assume the gadget is always self-powered.
+ * Set power usage; ensure it is valid
  */
 static int do_set_config(struct fsg_dev *fsg, u8 new_config)
 {
@@ -2928,6 +3014,11 @@ static void handle_exception(struct fsg_dev *fsg)
 			if (fsg->state < FSG_STATE_EXIT)
 				DBG(fsg, "Main thread exiting on signal\n");
 			raise_exception(fsg, FSG_STATE_EXIT);
+		}
+
+		/* set power, assume we only have a single configuration */
+		if (new_config == config_desc.bConfigurationValue) {
+			usb_gadget_vbus_draw(fsg->gadget, 2 * config_desc.bMaxPower);
 		}
 	}
 
@@ -3330,6 +3421,19 @@ static int __init check_parameters(struct fsg_dev *fsg)
 	return 0;
 }
 
+static void set_fsg_string(int id, const char* string)
+{
+	struct usb_string* curstr;
+	for(curstr = fsg_strings; curstr->id > 0; curstr++)
+	{
+		if(curstr->id == id)
+		{
+			curstr->s = string;
+			break;
+		}
+	}
+}
+
 
 static int __init fsg_bind(struct usb_gadget *gadget)
 {
@@ -3516,13 +3620,53 @@ static int __init fsg_bind(struct usb_gadget *gadget)
 	}
 	fsg->buffhds[fsg_num_buffers - 1].next = &fsg->buffhds[0];
 
-	/* This should reflect the actual gadget power source */
-	usb_gadget_set_selfpowered(gadget);
+	/*
+	 * As per USB compliance update, a device that is actively drawing
+	 * more than 100mA from USB must report itself as bus-powered in
+	 * the GetStatus(DEVICE) call.
+	 */
 
+#if defined (CONFIG_ARCH_NXP3200)
+	if (have_usb_power_option()) {
+		if (LF_USB_GADGET_VBUS_POWER <= USB_SELF_POWER_VBUS_MAX_DRAW)
+			usb_gadget_set_selfpowered(gadget);
+	} else {
+		if (LF_USB_GADGET_VBUS_NO_POWER <= USB_SELF_POWER_VBUS_MAX_DRAW)
+			usb_gadget_set_selfpowered(gadget);
+	}
+#else
+	if (CONFIG_USB_GADGET_VBUS_DRAW <= USB_SELF_POWER_VBUS_MAX_DRAW)
+		usb_gadget_set_selfpowered(gadget);
+#endif
+
+#ifdef CONFIG_ARCH_NXP3200
+	snprintf(fsg_string_manufacturer, sizeof fsg_string_manufacturer,
+			"%s", MANUFACTURER_ID_STRING);
+
+	switch(get_leapfrog_platform())
+	{
+		case LUCY:
+			device_desc.idProduct = cpu_to_le16(FSG_PRODUCT_ID_LUCY);
+			set_fsg_string(FSG_STRING_PRODUCT, PRODUCT_ID_STRING_LUCY);
+			break;
+		case RIO:
+			device_desc.idProduct = cpu_to_le16(FSG_PRODUCT_ID_RIO);
+			set_fsg_string(FSG_STRING_PRODUCT, PRODUCT_ID_STRING_RIO);
+			break;
+		case VALENCIA:
+			device_desc.idProduct = cpu_to_le16(FSG_PRODUCT_ID_VALENCIA);
+			set_fsg_string(FSG_STRING_PRODUCT, PRODUCT_ID_STRING_VALENCIA);
+			break;
+		default:
+			break;
+	}
+	
+#else
 	snprintf(fsg_string_manufacturer, sizeof fsg_string_manufacturer,
 			"%s %s with %s",
 			init_utsname()->sysname, init_utsname()->release,
 			gadget->name);
+#endif
 
 	fsg->thread_task = kthread_create(fsg_main_thread, fsg,
 			"file-storage-gadget");

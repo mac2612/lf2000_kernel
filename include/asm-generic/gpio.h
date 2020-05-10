@@ -66,6 +66,12 @@ struct device_node;
  * @dbg_show: optional routine to show contents in debugfs; default code
  *	will be used when this is omitted, but custom code can show extra
  *	state (such as pullup/pulldown configuration).
+ * @set_pullup: optional routine to set pull up resistor value
+ * @get_pullup: optional routine to get pull up resistor value
+ * @set_current: optional routine to set drive strength value
+ * @get_current: optional routine to get drive strength value
+ * @set_function: optional routine to set alternate function for a pin
+ * @get_function: optional routine to get alternate function for a pin
  * @base: identifies the first GPIO number handled by this chip; or, if
  *	negative during registration, requests dynamic ID allocation.
  * @ngpio: the number of GPIOs handled by this controller; the last GPIO
@@ -116,11 +122,34 @@ struct gpio_chip {
 
 	void			(*dbg_show)(struct seq_file *s,
 						struct gpio_chip *chip);
+						
+	int			(*set_pullup)(struct gpio_chip *chip,
+						unsigned offset, unsigned value);
+						
+	int			(*get_pullup)(struct gpio_chip *chip,
+						unsigned offset);
+	
+	int			(*set_current)(struct gpio_chip *chip,
+						unsigned offset, unsigned value);
+
+	int			(*get_current)(struct gpio_chip *chip,
+						unsigned offset);
+						
+	int			(*set_function)(struct gpio_chip *chip,
+						unsigned offset, unsigned function);
+
+	int			(*get_function)(struct gpio_chip *chip,
+						unsigned offset);
+	
+	unsigned		(*to_phys)(struct gpio_chip *chip,
+						unsigned offset);
+	
 	int			base;
 	u16			ngpio;
 	const char		*const *names;
 	unsigned		can_sleep:1;
 	unsigned		exported:1;
+	unsigned		is_virtual:1;
 
 #if defined(CONFIG_OF_GPIO)
 	/*
@@ -161,6 +190,13 @@ extern int gpio_set_debounce(unsigned gpio, unsigned debounce);
 extern int gpio_get_value_cansleep(unsigned gpio);
 extern void gpio_set_value_cansleep(unsigned gpio, int value);
 
+/* GPIO Framework extensions */
+extern int gpio_set_pullup(unsigned gpio, unsigned value);
+extern int gpio_get_pullup(unsigned gpio);
+extern int gpio_set_current(unsigned gpio, unsigned value);
+extern int gpio_get_current(unsigned gpio);
+extern int gpio_set_function(unsigned gpio, unsigned value);
+extern int gpio_get_function(unsigned gpio);
 
 /* A platform's <asm/gpio.h> code may want to inline the I/O calls when
  * the GPIO is constant and refers to some always-present controller,

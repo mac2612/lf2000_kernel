@@ -61,9 +61,34 @@
  * DO NOT REUSE THESE IDs with any other driver!!  Ever!!
  * Instead:  allocate your own, using normal USB-IF procedures.
  */
+/* LeapFrog specific defines */
+#ifdef CONFIG_ARCH_NXP3200
+#include <mach/platform_id.h>
+#define FSG_VENDOR_ID			0x0f63
+#define FSG_PRODUCT_ID_LUCY		0x001c
+#define FSG_PRODUCT_ID_RIO		0x0024
+#define FSG_PRODUCT_ID_VALENCIA		0x001e
+
+#define PRODUCT_ID_STRING       	"Leapster Explorer"
+#define PRODUCT_ID_STRING_LUCY		"Leapster GS Explorer"
+#define PRODUCT_ID_STRING_RIO		"LeapPad Ultra"
+#define PRODUCT_ID_STRING_VALENCIA	"LeapPad2 Explorer"
+
+#define PRODUCT_ID_VOL_LUCY		"LGS Explorer"
+#define PRODUCT_ID_VOL_RIO		"LeapPad Ultra"
+#define PRODUCT_ID_VOL_VALENCIA		"LeapPad2"
+
+#define MANUFACTURER_ID_STRING		"LeapFrog Enterprises, Inc."
+
+/* This has to be defined, but this will be a dummy */
+#define FSG_PRODUCT_ID	0x0000
+
+#else
+
 #define FSG_VENDOR_ID	0x0525	/* NetChip */
 #define FSG_PRODUCT_ID	0xa4a5	/* Linux-USB File-backed Storage Gadget */
 
+#endif
 
 /*-------------------------------------------------------------------------*/
 

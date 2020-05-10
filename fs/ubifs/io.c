@@ -760,7 +760,9 @@ int ubifs_wbuf_write_nolock(struct ubifs_wbuf *wbuf, void *buf, int len)
 		if (err)
 			goto out;
 
+		spin_lock(&wbuf->lock);
 		wbuf->offs += wbuf->size;
+		spin_unlock(&wbuf->lock);
 		len -= wbuf->avail;
 		aligned_len -= wbuf->avail;
 		written += wbuf->avail;
@@ -779,7 +781,9 @@ int ubifs_wbuf_write_nolock(struct ubifs_wbuf *wbuf, void *buf, int len)
 		if (err)
 			goto out;
 
+		spin_lock(&wbuf->lock);
 		wbuf->offs += wbuf->size;
+		spin_unlock(&wbuf->lock);
 		len -= wbuf->size;
 		aligned_len -= wbuf->size;
 		written += wbuf->size;
@@ -800,7 +804,9 @@ int ubifs_wbuf_write_nolock(struct ubifs_wbuf *wbuf, void *buf, int len)
 				      wbuf->offs, n, wbuf->dtype);
 		if (err)
 			goto out;
+		spin_lock(&wbuf->lock);
 		wbuf->offs += n;
+		spin_unlock(&wbuf->lock);
 		aligned_len -= n;
 		len -= n;
 		written += n;

@@ -96,6 +96,7 @@ obj-$(CONFIG_SOC_CAMERA_OV9640)		+= ov9640.o
 obj-$(CONFIG_SOC_CAMERA_OV9740)		+= ov9740.o
 obj-$(CONFIG_SOC_CAMERA_RJ54N1)		+= rj54n1cb0c.o
 obj-$(CONFIG_SOC_CAMERA_TW9910)		+= tw9910.o
+obj-$(CONFIG_SOC_CAMERA_HYNIX)		+= hynix_yac.o
 
 # And now the v4l2 drivers:
 
@@ -193,6 +194,16 @@ obj-$(CONFIG_VIDEO_SAMSUNG_S5P_TV)	+= s5p-tv/
 obj-$(CONFIG_VIDEO_SAMSUNG_S5P_G2D)	+= s5p-g2d/
 
 obj-$(CONFIG_BLACKFIN)                  += blackfin/
+
+ifeq ($(CONFIG_VIDEO_LF2000_1),y)
+  lf2000_vip-objs			:= lf2000_vip_1.o
+endif
+
+ifeq ($(CONFIG_VIDEO_LF2000_2),y)
+  lf2000_vip-objs			:= lf2000_vip_2.o
+endif
+
+obj-$(CONFIG_VIDEO_LF2000)		+= lf2000_vip.o
 
 obj-$(CONFIG_ARCH_DAVINCI)		+= davinci/
 

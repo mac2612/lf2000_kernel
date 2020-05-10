@@ -49,6 +49,13 @@
 #include <linux/io.h>
 #include <linux/mtd/partitions.h>
 
+#ifdef CONFIG_PLAT_NXP3200
+int lf2000_nand_read(struct mtd_info *mtd, loff_t from, size_t len,
+		                    size_t *retlen, uint8_t *buf);
+int lf2000_nand_read_oob(struct mtd_info *mtd, loff_t from,
+		            	 struct mtd_oob_ops *ops);
+#endif
+
 /* Define default oob placement schemes for large and small page devices */
 static struct nand_ecclayout nand_oob_8 = {
 	.eccbytes = 3,
@@ -93,10 +100,15 @@ static struct nand_ecclayout nand_oob_128 = {
 		 .length = 78} }
 };
 
-static int nand_get_device(struct nand_chip *chip, struct mtd_info *mtd,
+#ifndef CONFIG_PLAT_NXP3200
+static 
+#endif
+int nand_get_device(struct nand_chip *chip, struct mtd_info *mtd,
 			   int new_state);
-
-static int nand_do_write_oob(struct mtd_info *mtd, loff_t to,
+#ifndef CONFIG_PLAT_NXP3200
+static 
+#endif
+int nand_do_write_oob(struct mtd_info *mtd, loff_t to,
 			     struct mtd_oob_ops *ops);
 
 /*
@@ -132,7 +144,10 @@ static int check_offs_len(struct mtd_info *mtd,
  *
  * Deselect, release chip lock and wake up anyone waiting on the device.
  */
-static void nand_release_device(struct mtd_info *mtd)
+#ifndef CONFIG_PLAT_NXP3200
+static
+#endif
+void nand_release_device(struct mtd_info *mtd)
 {
 	struct nand_chip *chip = mtd->priv;
 
@@ -146,6 +161,9 @@ static void nand_release_device(struct mtd_info *mtd)
 	wake_up(&chip->controller->wq);
 	spin_unlock(&chip->controller->lock);
 }
+#ifdef CONFIG_PLAT_NXP3200
+EXPORT_SYMBOL(nand_release_device);
+#endif
 
 /**
  * nand_read_byte - [DEFAULT] read one byte from the chip
@@ -160,7 +178,6 @@ static uint8_t nand_read_byte(struct mtd_info *mtd)
 }
 
 /**
- * nand_read_byte16 - [DEFAULT] read one byte endianess aware from the chip
  * nand_read_byte16 - [DEFAULT] read one byte endianness aware from the chip
  * @mtd: MTD device structure
  *
@@ -426,8 +443,14 @@ static int nand_default_block_markbad(struct mtd_info *mtd, loff_t ofs)
 
 		nand_get_device(chip, mtd, FL_WRITING);
 
+		/* Write to first two pages and to byte 1 and 6 if necessary.
+		 * If we write to more than one location, the first error
+		 * encountered quits the procedure. We write two bytes per
+		 * location, so we dont have to mess with 16 bit access.
+		 */
 		ops.datbuf = NULL;
 		ops.oobbuf = buf;
+
 		ops.ooboffs = chip->badblockpos;
 		if (chip->options & NAND_BUSWIDTH_16) {
 			ops.ooboffs &= ~0x01;
@@ -445,6 +468,11 @@ static int nand_default_block_markbad(struct mtd_info *mtd, loff_t ofs)
 			if (!ret)
 				ret = res;
 
+			if (!ret && (chip->options & NAND_BBT_SCANBYTE1AND6)) {
+				ops.ooboffs = NAND_SMALL_BADBLOCK_POS
+					& ~0x01;
+				ret = nand_do_write_oob(mtd, ofs, &ops);
+			}
 			i++;
 			wr_ofs += mtd->writesize;
 		} while ((chip->bbt_options & NAND_BBT_SCAN2NDPAGE) && i < 2);
@@ -797,7 +825,10 @@ static void panic_nand_get_device(struct nand_chip *chip,
  *
  * Get the device and lock it for exclusive access
  */
-static int
+#ifndef CONFIG_PLAT_NXP3200
+static 
+#endif
+int
 nand_get_device(struct nand_chip *chip, struct mtd_info *mtd, int new_state)
 {
 	spinlock_t *lock = &chip->controller->lock;
@@ -829,6 +860,9 @@ retry:
 	remove_wait_queue(wq, &wait);
 	goto retry;
 }
+#ifdef CONFIG_PLAT_NXP3200
+EXPORT_SYMBOL(nand_get_device);
+#endif
 
 /**
  * panic_nand_wait - [GENERIC] wait until the command is done
@@ -868,13 +902,8 @@ static void panic_nand_wait(struct mtd_info *mtd, struct nand_chip *chip,
 static int nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 {
 
-	unsigned long timeo = jiffies;
 	int status, state = chip->state;
-
-	if (state == FL_ERASING)
-		timeo += (HZ * 400) / 1000;
-	else
-		timeo += (HZ * 20) / 1000;
+	unsigned long timeo = (state == FL_ERASING ? 400 : 20);
 
 	led_trigger_event(nand_led_trigger, LED_FULL);
 
@@ -892,15 +921,31 @@ static int nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 	if (in_interrupt() || oops_in_progress)
 		panic_nand_wait(mtd, chip, timeo);
 	else {
+		int broke = 0;	/* new */
+
+		timeo = jiffies + msecs_to_jiffies(timeo);
 		while (time_before(jiffies, timeo)) {
 			if (chip->dev_ready) {
-				if (chip->dev_ready(mtd))
+				if (chip->dev_ready(mtd)) {
+					broke = 1;	/* new */
 					break;
+				}
 			} else {
-				if (chip->read_byte(mtd) & NAND_STATUS_READY)
+				if (chip->read_byte(mtd) & NAND_STATUS_READY) {
+					broke = 1;	/* new */
 					break;
+				}
 			}
 			cond_resched();
+		}
+		if (!broke) {
+			if (state == FL_ERASING) {
+				printk(KERN_WARNING "%s.%d timed out by %ld jiffies; status 0x%X\n",
+						__FUNCTION__, __LINE__, jiffies - timeo, chip->read_byte(mtd));
+			}
+			if (chip->dev_ready) { /*clear the interrupt bit if it's set */
+				chip->dev_ready(mtd);
+			}
 		}
 	}
 	led_trigger_event(nand_led_trigger, LED_OFF);
@@ -919,7 +964,7 @@ static int nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
  *          when = 1, unlock the range of blocks outside the boundaries
  *                    of the lower and upper boundary address
  *
- * Returs unlock status.
+ * Returns unlock status.
  */
 static int __nand_unlock(struct mtd_info *mtd, loff_t ofs,
 					uint64_t len, int invert)
@@ -1213,6 +1258,14 @@ static int nand_read_subpage(struct mtd_info *mtd, struct nand_chip *chip,
 			break;
 		}
 	}
+#ifdef CONFIG_PLAT_NXP3200  /* TODO: FIXME */
+	if (1) {
+		chip->cmdfunc(mtd, NAND_CMD_RNDOUT, mtd->writesize, -1);
+		chip->read_buf(mtd, chip->oob_poi, mtd->oobsize);
+		index = start_step * chip->ecc.bytes;
+	} 
+	else
+#endif	// 27sep11
 	if (gaps) {
 		chip->cmdfunc(mtd, NAND_CMD_RNDOUT, mtd->writesize, -1);
 		chip->read_buf(mtd, chip->oob_poi, mtd->oobsize);
@@ -1407,7 +1460,10 @@ static int nand_read_page_syndrome(struct mtd_info *mtd, struct nand_chip *chip,
  * @ops: oob ops structure
  * @len: size of oob to transfer
  */
-static uint8_t *nand_transfer_oob(struct nand_chip *chip, uint8_t *oob,
+#ifndef CONFIG_PLAT_NXP3200
+static
+#endif
+uint8_t *nand_transfer_oob(struct nand_chip *chip, uint8_t *oob,
 				  struct mtd_oob_ops *ops, size_t len)
 {
 	switch (ops->mode) {
@@ -1447,6 +1503,9 @@ static uint8_t *nand_transfer_oob(struct nand_chip *chip, uint8_t *oob,
 	}
 	return NULL;
 }
+#ifdef CONFIG_PLAT_NXP3200
+EXPORT_SYMBOL(nand_transfer_oob);
+#endif
 
 /**
  * nand_do_read_ops - [INTERN] Read data with ECC
@@ -1696,7 +1755,13 @@ static int nand_write_oob_std(struct mtd_info *mtd, struct nand_chip *chip,
 	int length = mtd->oobsize;
 
 	chip->cmdfunc(mtd, NAND_CMD_SEQIN, mtd->writesize, page);
-	chip->write_buf(mtd, buf, length);
+	chip->write_buf(mtd, buf, 1);  /* NOTE: LF changed to write only 1
+					* byte instead of the entire OOB.
+					* TODO: FIXME: probably ought to
+					* restore this function to its original
+					* version and point LF stuff to a 
+					* different routine. */
+
 	/* Send command to program the OOB data */
 	chip->cmdfunc(mtd, NAND_CMD_PAGEPROG, -1, -1);
 
@@ -1772,7 +1837,10 @@ static int nand_write_oob_syndrome(struct mtd_info *mtd,
  *
  * NAND read out-of-band data from the spare area.
  */
-static int nand_do_read_oob(struct mtd_info *mtd, loff_t from,
+#ifndef CONFIG_PLAT_NXP3200
+static 
+#endif
+int nand_do_read_oob(struct mtd_info *mtd, loff_t from,
 			    struct mtd_oob_ops *ops)
 {
 	int page, realpage, chipnr, sndcmd = 1;
@@ -1867,6 +1935,9 @@ static int nand_do_read_oob(struct mtd_info *mtd, loff_t from,
 
 	return  mtd->ecc_stats.corrected - stats.corrected ? -EUCLEAN : 0;
 }
+#ifdef CONFIG_PLAT_NXP3200
+EXPORT_SYMBOL(nand_do_read_oob);
+#endif
 
 /**
  * nand_read_oob - [MTD Interface] NAND read data and/or out-of-band
@@ -2363,7 +2434,10 @@ static int nand_write(struct mtd_info *mtd, loff_t to, size_t len,
  *
  * NAND write out-of-band.
  */
-static int nand_do_write_oob(struct mtd_info *mtd, loff_t to,
+#ifndef CONFIG_PLAT_NXP3200
+static 
+#endif
+int nand_do_write_oob(struct mtd_info *mtd, loff_t to,
 			     struct mtd_oob_ops *ops)
 {
 	int chipnr, page, status, len;
@@ -2436,6 +2510,9 @@ static int nand_do_write_oob(struct mtd_info *mtd, loff_t to,
 
 	return 0;
 }
+#ifdef CONFIG_PLAT_NXP3200
+EXPORT_SYMBOL(nand_do_write_oob);
+#endif
 
 /**
  * nand_write_oob - [MTD Interface] NAND write data and/or out-of-band
@@ -2534,6 +2611,20 @@ static int nand_erase(struct mtd_info *mtd, struct erase_info *instr)
  *
  * Erase one ore more blocks.
  */
+#ifdef CONFIG_PLAT_NXP3200	/* TODO: FIXME: depends on profiling */
+#include "nexell/lf2000.h"
+
+#ifdef CONFIG_MTD_NAND_LF2000_PROF
+#include "nexell/prof.h"
+#define NAND_STATS_ACCUM(a,b,c) nand_stats_accum(a,b,c)
+
+#else	/* CONFIG_MTD_NAND_LF2000_PROF not defined */
+
+#define NAND_STATS_ACCUM(a,b,c) do { } while (0)
+#endif	/* ifndef CONFIG_MTD_NAND_LF2000_PROF */
+
+#endif	/* CONFIG_PLAT_NXP3200 */
+
 int nand_erase_nand(struct mtd_info *mtd, struct erase_info *instr,
 		    int allowbbt)
 {
@@ -2543,12 +2634,28 @@ int nand_erase_nand(struct mtd_info *mtd, struct erase_info *instr,
 	unsigned int bbt_masked_page = 0xffffffff;
 	loff_t len;
 
+#ifdef CONFIG_PLAT_NXP3200
+	int block;
+#endif
 	pr_debug("%s: start = 0x%012llx, len = %llu\n",
 			__func__, (unsigned long long)instr->addr,
 			(unsigned long long)instr->len);
 
 	if (check_offs_len(mtd, instr->addr, instr->len))
 		return -EINVAL;
+
+#ifdef CONFIG_PLAT_NXP3200
+	page = (int)(instr->addr >> chip->page_shift);
+	block = page >> (chip->phys_erase_shift - chip->page_shift); 
+	NAND_STATS_ACCUM (NS_ERASE2, 1, block);
+#endif
+#if 0	/* Added on 24may12 to help figure out why so much wear on rootfs */
+	/* when fsage is running.  Found it's because every call to sync()
+	 * results in an erasure of the root partition (and the bulk partition).
+	 */
+	if (block < 180)	/* if it might be in the root partition */
+	printk(KERN_INFO "nand_erase_nand: page %d, block %d\n", page, block);
+#endif
 
 	/* Grab the lock and see if the device is available */
 	nand_get_device(chip, mtd, FL_ERASING);
@@ -2585,6 +2692,9 @@ int nand_erase_nand(struct mtd_info *mtd, struct erase_info *instr,
 
 	instr->state = MTD_ERASING;
 
+#ifdef CONFIG_PLAT_NXP3200
+	NAND_STATS_ACCUM (NS_ERASE, 1, block);
+#endif	// 21oct11
 	while (len) {
 		/* Check if we have a bad block, we do not erase bad blocks! */
 		if (nand_block_checkbad(mtd, ((loff_t) page) <<
@@ -2622,6 +2732,10 @@ int nand_erase_nand(struct mtd_info *mtd, struct erase_info *instr,
 			instr->state = MTD_ERASE_FAILED;
 			instr->fail_addr =
 				((loff_t)page << chip->page_shift);
+#ifdef CONFIG_PLAT_NXP3200
+printk(KERN_INFO "nand_erase_nand(): erase failed @ page 0x%08x (0x%08x)\n",
+		page, (unsigned int)instr->fail_addr );
+#endif
 			goto erase_exit;
 		}
 
@@ -2666,13 +2780,25 @@ erase_exit:
 	/* Do call back function */
 	if (!ret)
 		mtd_erase_callback(instr);
+#ifdef CONFIG_PLAT_NXP3200
+		// Temporarily moved here from lf2000_single_erase_cmd() G
+		// When measured here (E-G), see 822 microsec. Eras2: 831
+	NAND_STATS_ACCUM (NS_ERASE, 0, block);
+#endif
 
 	/*
 	 * If BBT requires refresh and erase was successful, rewrite any
 	 * selected bad block tables.
 	 */
+#ifdef CONFIG_PLAT_NXP3200
+	if (bbt_masked_page == 0xffffffff || ret) {
+		NAND_STATS_ACCUM (NS_ERASE2, 0, block);
+		return ret;
+	}
+#else
 	if (bbt_masked_page == 0xffffffff || ret)
 		return ret;
+#endif
 
 	for (chipnr = 0; chipnr < chip->numchips; chipnr++) {
 		if (!rewrite_bbt[chipnr])
@@ -2684,6 +2810,9 @@ erase_exit:
 		nand_update_bbt(mtd, rewrite_bbt[chipnr]);
 	}
 
+#ifdef CONFIG_PLAT_NXP3200
+	NAND_STATS_ACCUM (NS_ERASE2, 0, block);
+#endif
 	/* Return more or less happy */
 	return ret;
 }
@@ -2861,11 +2990,30 @@ static int nand_flash_detect_onfi(struct mtd_info *mtd, struct nand_chip *chip,
 		}
 	}
 
-	if (i == 3)
+	if (i == 3) {
+		printk(KERN_INFO "No ONFI param page is valid\n");
 		return 0;
+	}
 
 	/* Check version */
 	val = le16_to_cpu(p->revision);
+#ifndef CONFIG_PLAT_NXP3200
+	if (val == 1 || val > (1 << 4)) {
+		printk(KERN_INFO "%s: unsupported ONFI version: %d\n",
+								__func__, val);
+		return 0;
+	}
+	if (val & (1 << 5))
+		chip->onfi_version = 23;
+	else if (val & (1 << 4))
+		chip->onfi_version = 22;
+	else if (val & (1 << 3))
+		chip->onfi_version = 21;
+	else if (val & (1 << 2))
+		chip->onfi_version = 20;
+	else
+		chip->onfi_version = 10;
+#else
 	if (val & (1 << 5))
 		chip->onfi_version = 23;
 	else if (val & (1 << 4))
@@ -2883,6 +3031,7 @@ static int nand_flash_detect_onfi(struct mtd_info *mtd, struct nand_chip *chip,
 		pr_info("%s: unsupported ONFI version: %d\n", __func__, val);
 		return 0;
 	}
+#endif
 
 	sanitize_string(p->manufacturer, sizeof(p->manufacturer));
 	sanitize_string(p->model, sizeof(p->model));
@@ -2897,8 +3046,13 @@ static int nand_flash_detect_onfi(struct mtd_info *mtd, struct nand_chip *chip,
 	if (le16_to_cpu(p->features) & 1)
 		*busw = NAND_BUSWIDTH_16;
 
-	chip->options |= NAND_NO_READRDY | NAND_NO_AUTOINCR;
+	chip->options &= ~NAND_CHIPOPTIONS_MSK;
+	chip->options |= (NAND_NO_READRDY |
+			NAND_NO_AUTOINCR) & NAND_CHIPOPTIONS_MSK;
 
+#ifdef CONFIG_PLAT_NXP3200
+	lf2000_onfi(mtd, chip);
+#endif
 	pr_info("ONFI flash detected\n");
 	return 1;
 }
@@ -2950,6 +3104,21 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 			*maf_id, *dev_id, id_data[0], id_data[1]);
 		return ERR_PTR(-ENODEV);
 	}
+#ifdef CONFIG_PLAT_NXP3200
+	// do this here in order to output ID bytes for all types of
+	// NAND, even ONFI-compliant NAND.
+	for (i = 2; i < 8; i++)
+		id_data[i] = chip->read_byte(mtd);
+	pr_info("NAND ID bytes: %02x %02x %02x %02x %02x %02x %02x %02x\n",
+			id_data[0], id_data[1], id_data[2], id_data[3],
+			id_data[4], id_data[5], id_data[6], id_data[7]);
+
+	/* hack to ignore Hynix NAND on ATAP cartridges */
+	if (*maf_id == NAND_MFR_HYNIX && *dev_id == 0xD5) {
+		pr_info("Hynix 2GiB NAND not supported\n");
+		return ERR_PTR(-EPERM);
+	}
+#endif
 
 	if (!type)
 		type = nand_flash_ids;
@@ -2981,9 +3150,18 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 
 	chip->chipsize = (uint64_t)type->chipsize << 20;
 
+#ifdef CONFIG_PLAT_NXP3200
+	// init_size() might set options bits, so init here
+	/* Zero the chip options, but preserve non chip based options */
+	chip->options &= ~NAND_CHIPOPTIONS_MSK;
+#endif
 	if (!type->pagesize && chip->init_size) {
 		/* Set the pagesize, oobsize, erasesize by the driver */
 		busw = chip->init_size(mtd, chip, id_data);
+#ifdef CONFIG_PLAT_NXP3200
+		if (busw < 0)
+			return ERR_PTR(-EINVAL);
+#endif
 	} else if (!type->pagesize) {
 		int extid;
 		/* The 3rd id byte holds MLC / multichip data */
@@ -3048,6 +3226,14 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 		mtd->writesize = type->pagesize;
 		mtd->oobsize = mtd->writesize / 32;
 		busw = type->options & NAND_BUSWIDTH_16;
+#ifdef CONFIG_PLAT_NXP3200
+		// Hack intended to catch LF carts w/ OTP NANDs.
+		if (   (mtd->erasesize < 0x10000)
+			&& (mtd->writesize < 0x800))
+		{
+			chip->ecc.mode = NAND_ECC_NONE;
+		}
+#endif
 
 		/*
 		 * Check for Spansion/AMD ID + repeating 5th, 6th byte since
@@ -3062,8 +3248,13 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 			mtd->erasesize <<= ((id_data[3] & 0x03) << 1);
 		}
 	}
-	/* Get chip options */
-	chip->options |= type->options;
+	/* Get chip options, preserve non chip based options */
+#ifndef CONFIG_PLAT_NXP3200
+	// We did this earlier for LF2000 because init_size() 
+	// might have already set options bits
+	chip->options &= ~NAND_CHIPOPTIONS_MSK;
+#endif
+	chip->options |= type->options & NAND_CHIPOPTIONS_MSK;
 
 	/*
 	 * Check if chip is not a Samsung device. Do not clear the
@@ -3182,6 +3373,9 @@ int nand_scan_ident(struct mtd_info *mtd, int maxchips,
 	/* Set the default functions */
 	nand_set_defaults(chip, busw);
 
+#ifdef CONFIG_PLAT_NXP3200
+	nand_get_device( chip, mtd, FL_READING);
+#endif
 	/* Read the flash type */
 	type = nand_get_flash_type(mtd, chip, busw,
 				&nand_maf_id, &nand_dev_id, table);
@@ -3189,7 +3383,11 @@ int nand_scan_ident(struct mtd_info *mtd, int maxchips,
 	if (IS_ERR(type)) {
 		if (!(chip->options & NAND_SCAN_SILENT_NODEV))
 			pr_warn("No NAND device found\n");
+#ifdef CONFIG_PLAT_NXP3200
+		nand_release_device( mtd );
+#else
 		chip->select_chip(mtd, -1);
+#endif
 		return PTR_ERR(type);
 	}
 
@@ -3205,6 +3403,9 @@ int nand_scan_ident(struct mtd_info *mtd, int maxchips,
 		    nand_dev_id != chip->read_byte(mtd))
 			break;
 	}
+#ifdef CONFIG_PLAT_NXP3200
+	nand_release_device( mtd );
+#endif
 	if (i > 1)
 		pr_info("%d NAND chips detected\n", i);
 
@@ -3215,6 +3416,40 @@ int nand_scan_ident(struct mtd_info *mtd, int maxchips,
 	return 0;
 }
 EXPORT_SYMBOL(nand_scan_ident);
+
+#ifdef CONFIG_PLAT_NXP3200
+void nand_setup_for_swecc( struct nand_chip *chip ) 
+{
+	chip->ecc.calculate	 = nand_calculate_ecc;
+	chip->ecc.correct	 = nand_correct_data;
+	chip->ecc.read_page	 = nand_read_page_swecc;
+	chip->ecc.read_subpage	 = nand_read_subpage;
+	chip->ecc.write_page	 = nand_write_page_swecc;
+	chip->ecc.read_page_raw	 = nand_read_page_raw;
+	chip->ecc.write_page_raw = nand_write_page_raw;
+	chip->ecc.read_oob	 = nand_read_oob_std;
+	chip->ecc.write_oob	 = nand_write_oob_std;
+	if (!chip->ecc.size)
+		chip->ecc.size = 256;
+	chip->ecc.bytes = 3;
+}
+EXPORT_SYMBOL(nand_setup_for_swecc);
+
+void nand_setup_for_no_ecc( struct mtd_info *mtd, struct nand_chip *chip ) 
+{
+	chip->ecc.read_page	 = nand_read_page_raw;
+	chip->ecc.write_page	 = nand_write_page_raw;
+	chip->ecc.read_oob	 = nand_read_oob_std;
+	chip->ecc.read_page_raw  = nand_read_page_raw;
+	chip->ecc.write_page_raw = nand_write_page_raw;
+	chip->ecc.write_oob	 = nand_write_oob_std;
+	chip->ecc.size		 = mtd->writesize;
+	chip->ecc.bytes		 = 0;
+	chip->ecc.steps		 = 1;
+	chip->ecc.total		 = 0;
+}
+EXPORT_SYMBOL(nand_setup_for_no_ecc);
+#endif
 
 
 /**
@@ -3452,7 +3687,14 @@ int nand_scan_tail(struct mtd_info *mtd)
 	chip->state = FL_READY;
 
 	/* De-select the device */
+#ifndef CONFIG_PLAT_NXP3200
 	chip->select_chip(mtd, -1);
+#else	/* In the LF2000 world, we don't want to deselect unless we've */
+	/* previously selected via nand_get_device().  If necessary, 
+	 * add a call to nand_sync() here.  It calls both nand_get_device()
+	 * and nand_release_device().
+	 */
+#endif
 
 	/* Invalidate the pagebuffer reference */
 	chip->pagebuf = -1;
@@ -3467,7 +3709,8 @@ int nand_scan_tail(struct mtd_info *mtd)
 	mtd->_read = nand_read;
 	mtd->_write = nand_write;
 	mtd->_panic_write = panic_nand_write;
-	mtd->_read_oob = nand_read_oob;
+	if (NULL == mtd->_read_oob)	/* TODO: FIXME: LF-specific change */
+		mtd->_read_oob = nand_read_oob;
 	mtd->_write_oob = nand_write_oob;
 	mtd->_sync = nand_sync;
 	mtd->_lock = NULL;

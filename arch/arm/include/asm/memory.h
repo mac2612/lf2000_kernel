@@ -80,7 +80,19 @@
  */
 #define IOREMAP_MAX_ORDER	24
 
+#ifdef CONFIG_PLAT_NXP3200
+/*
+ * Allow 50MB-aligned ioremap pages
+ * Needed to support larger screen and camera buffers
+ * There is a 2 MB separator between the memory regions
+ * See arch/arm/include/asm/pgtable.h for corresponding VMALLOC_END definition
+ */
+
+#define CONSISTENT_END		( 0xFFFFFFFF - ( SZ_2M - 1 ) )
+
+#else
 #define CONSISTENT_END		(0xffe00000UL)
+#endif
 
 #else /* CONFIG_MMU */
 

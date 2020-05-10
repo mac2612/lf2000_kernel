@@ -43,6 +43,37 @@
 
 #include "i2c-core.h"
 
+#ifdef CONFIG_PLAT_NXP3200
+#include <media/soc_camera.h>
+#include <media/hynix_yac.h>
+#endif
+
+#if (0)
+
+#define DEBUGOUT(msg...)		{ printk(KERN_INFO "i2c: " msg); }
+
+U32	NX_TIMER_GetTimerCounter( U32 ModuleIndex );
+
+static u32 start_time;
+static void timer_start(void)
+{
+	start_time = NX_TIMER_GetTimerCounter(0);
+}
+
+/* stop the stopwatch, and return the time */
+static u32 timer_stop(void)
+{
+	return NX_TIMER_GetTimerCounter(0) - start_time;
+}
+
+// Calculations in drivers/mtd/nand/nexell/nand.c
+static unsigned long ticks_to_microsecs( unsigned long ticks ) 
+{
+	return (u32)(0.192 * ticks);
+}
+#else
+#define DEBUGOUT(msg...)		do {} while (0)
+#endif // ZFORCE_TIMING
 
 /* core_lock protects i2c_adapter_idr, and guarantees
    that device detection, deletion of detected devices, and attach_adapter
@@ -391,7 +422,12 @@ static int __i2c_check_addr_busy(struct device *dev, void *addrp)
 	int			addr = *(int *)addrp;
 
 	if (client && client->addr == addr)
+#ifndef CONFIG_PLAT_NXP3200
 		return -EBUSY;
+#else
+		if (client && client->addr != (0x40 >>1))
+			return -EBUSY;
+#endif
 	return 0;
 }
 
@@ -461,6 +497,9 @@ EXPORT_SYMBOL_GPL(i2c_lock_adapter);
 static int i2c_trylock_adapter(struct i2c_adapter *adapter)
 {
 	struct i2c_adapter *parent = i2c_parent_is_i2c_adapter(adapter);
+	//struct device dev = adapter->dev;
+	
+	//DEBUGOUT("%s:%d dev_name = %s\n", __FUNCTION__, __LINE__, dev_name(&dev));
 
 	if (parent)
 		return i2c_trylock_adapter(parent);
@@ -475,6 +514,9 @@ static int i2c_trylock_adapter(struct i2c_adapter *adapter)
 void i2c_unlock_adapter(struct i2c_adapter *adapter)
 {
 	struct i2c_adapter *parent = i2c_parent_is_i2c_adapter(adapter);
+	//struct device dev = adapter->dev;
+	
+	//DEBUGOUT("%s:%d dev_name = %s\n", __FUNCTION__, __LINE__, dev_name(&dev));
 
 	if (parent)
 		i2c_unlock_adapter(parent);
@@ -544,6 +586,18 @@ i2c_new_device(struct i2c_adapter *adap, struct i2c_board_info const *info)
 	dev_set_name(&client->dev, "%d-%04x", i2c_adapter_id(adap),
 		     client->addr | ((client->flags & I2C_CLIENT_TEN)
 				     ? 0xa000 : 0));
+#ifdef CONFIG_PLAT_NXP3200
+	/* Two instances of Hi-253 on same i2c bus segment... */
+	if (client->addr == (0x40 >>1))
+	{
+		struct soc_camera_device *icd = client->dev.platform_data;
+		struct soc_camera_link *icl = soc_camera_i2c_to_link(client);
+		struct hynix_yac_camera_info *cam = icl->priv;
+
+		dev_set_name(&client->dev, "%d-%04x (%s)", i2c_adapter_id(adap),
+			client->addr, cam->name);
+	}
+#endif
 	status = device_register(&client->dev);
 	if (status)
 		goto out_err;
@@ -1310,6 +1364,11 @@ int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 {
 	unsigned long orig_jiffies;
 	int ret, try;
+	ret = 0;
+	struct device dev = adap->dev;
+	if(msgs->addr == 0x50)
+			DEBUGOUT("%s:%d ret = %d\n", __FUNCTION__, __LINE__, ret);
+	u32 ticks;
 
 	/* REVISIT the fault reporting model here is weak:
 	 *
@@ -1327,7 +1386,13 @@ int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 	 *    one (discarding status on the second message) or errno
 	 *    (discarding status on the first one).
 	 */
-
+	
+	//if(!strcmp(dev_name(&dev), "i2c-0"))
+	//{
+		//if(msgs->addr == 0x66)
+			//return ret;	
+	//}
+		
 	if (adap->algo->master_xfer) {
 #ifdef DEBUG
 		for (ret = 0; ret < num; ret++) {
@@ -1337,30 +1402,48 @@ int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 				(msgs[ret].flags & I2C_M_RECV_LEN) ? "+" : "");
 		}
 #endif
+		//timer_start();
 
 		if (in_atomic() || irqs_disabled()) {
 			ret = i2c_trylock_adapter(adap);
+			//if(!strcmp(dev_name(&dev), "i2c-0"))
+				//dev_info(&adap->dev, "%s:%d TRYLOCK: ret = %d addr=0x%02x\n", __FUNCTION__, __LINE__, ret, msgs->addr);
 			if (!ret)
+			{
+				//if(msgs->addr == 0x50)
+					//DEBUGOUT("%s:%d ret = %d addr=0x%02x\n", __FUNCTION__, __LINE__, ret, msgs->addr);
 				/* I2C activity is ongoing. */
 				return -EAGAIN;
+			}
 		} else {
 			i2c_lock_adapter(adap);
+			//if(!strcmp(dev_name(&dev), "i2c-0"))
+				//dev_info(&adap->dev, "%s:%d LOCK: ret = %d addr=0x%02x\n", __FUNCTION__, __LINE__, ret, msgs->addr);
 		}
-
+		
 		/* Retry automatically on arbitration loss */
 		orig_jiffies = jiffies;
 		for (ret = 0, try = 0; try <= adap->retries; try++) {
 			ret = adap->algo->master_xfer(adap, msgs, num);
+			if(msgs->addr == 0x50)
+				DEBUGOUT("%s:%d xfer ret = %d\n", __FUNCTION__, __LINE__, ret);
 			if (ret != -EAGAIN)
 				break;
 			if (time_after(jiffies, orig_jiffies + adap->timeout))
 				break;
 		}
+		
 		i2c_unlock_adapter(adap);
-
+		//ticks = timer_stop();
+		
+		//if(msgs->addr == 0x50)
+			//DEBUGOUT("%s:%d ret = %d addr=0x%02x\n", __FUNCTION__, __LINE__, ret, msgs->addr);
+		//if(!strcmp(dev_name(&dev), "i2c-0"))
+			//dev_info(&adap->dev, "%s:%d UNLOCK num xfer = %d addr=0x%02x\n", __FUNCTION__, __LINE__, ret, msgs->addr);
+			
 		return ret;
 	} else {
-		dev_dbg(&adap->dev, "I2C level transfers not supported\n");
+		dev_info(&adap->dev, "I2C level transfers not supported\n");
 		return -EOPNOTSUPP;
 	}
 }
@@ -1407,7 +1490,7 @@ int i2c_master_recv(const struct i2c_client *client, char *buf, int count)
 {
 	struct i2c_adapter *adap = client->adapter;
 	struct i2c_msg msg;
-	int ret;
+	int ret = 0;
 
 	msg.addr = client->addr;
 	msg.flags = client->flags & I2C_M_TEN;
@@ -1421,6 +1504,8 @@ int i2c_master_recv(const struct i2c_client *client, char *buf, int count)
 	 * If everything went ok (i.e. 1 msg received), return #bytes received,
 	 * else error code.
 	 */
+	if(msg.addr == 0x50)
+		DEBUGOUT("%s:%d ret = %d\n", __FUNCTION__, __LINE__, ret);
 	return (ret == 1) ? count : ret;
 }
 EXPORT_SYMBOL(i2c_master_recv);

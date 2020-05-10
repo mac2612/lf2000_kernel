@@ -376,6 +376,39 @@ config I2C_DESIGNWARE_PCI
 	  This driver can also be built as a module.  If so, the module
 	  will be called i2c-designware-pci.
 
+config I2C_NEXELL
+	tristate "Nexell I2C (NX series)"
+	depends on ARCH_NEXELL
+		default n
+	help
+	  Support for NX series processor's I2C driver.
+
+config I2C_NEXELL_PORT0
+	bool "Nexell I2C port 0"
+	depends on I2C_NEXELL
+		default y
+
+config I2C_NEXELL_PORT1
+	bool "Nexell I2C port 1"
+	depends on I2C_NEXELL
+		default n
+
+config I2C_NEXELL_PROTO
+	tristate "Nexell I2C Prototype driver based on Samsung S3C24XX driver"
+	depends on ARCH_NEXELL
+	help
+	  Support for NX series processor's I2C driver.
+
+config I2C_NEXELL_PROTO_PORT0
+	bool "Nexell I2C port 0"
+	depends on I2C_NEXELL_PROTO
+		default y
+
+config I2C_NEXELL_PROTO_PORT1
+	bool "Nexell I2C port 1"
+	depends on I2C_NEXELL_PROTO
+		default n
+		
 config I2C_EG20T
 	tristate "Intel EG20T PCH/LAPIS Semicon IOH(ML7213/ML7223/ML7831) I2C"
 	depends on PCI

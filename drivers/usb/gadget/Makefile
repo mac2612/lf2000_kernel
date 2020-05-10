@@ -3,6 +3,8 @@
 #
 ccflags-$(CONFIG_USB_GADGET_DEBUG) := -DDEBUG
 
+# FIXME: Comment out udc-core line when building
+# dwc_otg driver.
 obj-$(CONFIG_USB_GADGET)	+= udc-core.o
 obj-$(CONFIG_USB_DUMMY_HCD)	+= dummy_hcd.o
 obj-$(CONFIG_USB_NET2272)	+= net2272.o
@@ -31,6 +33,8 @@ obj-$(CONFIG_USB_MV_UDC)	+= mv_udc.o
 mv_udc-y			:= mv_udc_core.o
 obj-$(CONFIG_USB_CI13XXX_MSM)	+= ci13xxx_msm.o
 obj-$(CONFIG_USB_FUSB300)	+= fusb300_udc.o
+obj-$(CONFIG_USB_NEXELL_OTGD)	+= s3c_udc_otg.o
+obj-$(CONFIG_USB_LF2000_OTGD)	+= lf2000-hsotg.o
 
 #
 # USB gadget drivers
