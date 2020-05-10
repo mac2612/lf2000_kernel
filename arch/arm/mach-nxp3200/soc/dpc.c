@@ -1187,7 +1187,8 @@ void soc_dpc_init(void)
 	defined(CONFIG_PLAT_NXP3200_L2K) || \
 	defined(CONFIG_PLAT_NXP3200_VALENCIA_CIP) || \
 	defined(CONFIG_PLAT_NXP3200_FAVELA) || \
-	defined(CONFIG_PLAT_NXP3200_RIO)
+	defined(CONFIG_PLAT_NXP3200_RIO) || \
+	defined(CONFIG_PLAT_NXP3200_BID)
 	/* init LCD via SPI */
 	spi_lcd_init();
 	spi_lcd_setup();

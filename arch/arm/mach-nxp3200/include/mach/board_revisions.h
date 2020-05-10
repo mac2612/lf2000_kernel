@@ -143,4 +143,8 @@
 
 #define LF2000_BOARD_RIO_FEP_800_327P67		0x32D
 
+static inline bool is_rio(int sysid) {
+    return (sysid >= LF2000_BOARD_RIO);
+}
+
 #endif /* BOARD_REVISIONS_H */

@@ -28,7 +28,7 @@
 
 /* nexell soc headers */
 #include <mach/platform.h>
-#include <mach/board_revisions.h"
+#include <mach/board_revisions.h>
 
 /* debug macro */
 #define DBGOUT(msg...)		{ printk(KERN_INFO msg); }

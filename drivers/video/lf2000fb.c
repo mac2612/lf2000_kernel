@@ -40,6 +40,7 @@
 #include <asm/io.h>
 #include <asm/uaccess.h>
 #include <asm/div64.h>
+#include <asm/system_info.h>
 #include <linux/major.h>
 #include <linux/pm.h>
 
@@ -50,6 +51,7 @@
 #include <mach/dpc.h>
 #include <mach/vmem.h>
 #include <mach/lf2000_lcd.h>
+#include <mach/board_revisions.h>
 
 #ifdef CONFIG_FB_NEXELL_LF1000_EXTENSION
 #include <linux/lf1000/lf1000fb.h>
@@ -260,37 +262,38 @@ static int fb_alloc_memory(struct fb_info *info)
 
 	/* allocate from system memory */
 	priv->length = PAGE_ALIGN(length);
-#if defined(CONFIG_PLAT_NXP3200_L2K) || defined(CONFIG_PLAT_NXP3200_M2K) || defined(CONFIG_PLAT_NXP3200_VALENCIA_CIP) || defined(CONFIG_PLAT_NXP3200_BID)
+	if(is_rio(system_rev)) {
+		/* max vmem block alloc = 16MB block (4K x 4K) */
+		for (size = min(length, (4096 << 12)); size > 0 ; length -= size, size = length)
+		{
+			int ret;
+			VM_IMEMORY vm;
+			int vmem_alloc(VM_IMEMORY *pmem, int minor, void *listhead);
+
+			memset(&vm, 0, sizeof(vm));
+			vm.MemWidth = 4096;
+			vm.MemHeight = size / 4096;
+			vm.Flags = VMEM_BLOCK_BUFFER;
+			vm.HorAlign = 1;
+			vm.VerAlign = 1;
+			ret = vmem_alloc(&vm, 0, NULL);
+
+			printk(KERN_INFO "%s: vmem ret=%d, phys=%08x, virt=%08x\n", __func__, ret, vm.Address, vm.Virtual);
+
+			if (priv->pbase)
+				continue;
+
+			priv->pbase = vm.Address & ~0x20000000UL;
+			priv->vbase = (void*)vm.Virtual;
+		}
+	} else {
 	priv->vbase  = dma_alloc_writecombine(
 						priv->device,
 						priv->length,
 						&priv->pbase,
 						GFP_KERNEL);
-#else
-	/* max vmem block alloc = 16MB block (4K x 4K) */
-	for (size = min(length, (4096 << 12)); size > 0 ; length -= size, size = length)
-	{
-		int ret;
-		VM_IMEMORY vm;
-		int vmem_alloc(VM_IMEMORY *pmem, int minor, void *listhead);
+    }
 
-		memset(&vm, 0, sizeof(vm));
-		vm.MemWidth = 4096;
-		vm.MemHeight = size / 4096;
-		vm.Flags = VMEM_BLOCK_BUFFER;
-		vm.HorAlign = 1;
-		vm.VerAlign = 1;
-		ret = vmem_alloc(&vm, 0, NULL);
-
-		printk(KERN_INFO "%s: vmem ret=%d, phys=%08x, virt=%08x\n", __func__, ret, vm.Address, vm.Virtual);
-
-		if (priv->pbase)
-			continue;
-
-		priv->pbase = vm.Address & ~0x20000000UL;
-		priv->vbase = (void*)vm.Virtual;
-	}
-#endif
 
 	if(priv->vbase) {
 		/* leave bootloader framebuffer memory alone (no memset) */

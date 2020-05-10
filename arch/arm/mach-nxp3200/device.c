@@ -261,11 +261,8 @@ static struct fb_plat_data fb0_platdata_1024_600 = {
 	.y_res		= 600,
 	.pixelbit	= CFG_DISP_SCREEN_PIXEL_BYTE * 8,
 	.format		= CFG_DISP_SCREEN_RGB_FORMAT,
-#if defined(CONFIG_PLAT_NXP3200_RIO)
+	// Non-rio devices should have 5, but AFAIK there are no production devices with a 1024x600 screen besides rio.
 	.buffers	= 8,
-#else
-	.buffers	= 5,
-#endif
 	.with_mm	= 1024 * 25 / 72,
 	.height_mm	= 600 * 25 / 72,
 	.hs_left	= 160,
