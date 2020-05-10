@@ -38,12 +38,11 @@
 /* nexell soc headers */
 #include <mach/platform.h>
 #include <mach/devices.h>
+#include <mach/board_revisions.h>
 
 /* For deciding what mtd partition to use */
 #include <mach/platform_id.h>
 
-/* FIXME */
-#include <../../../../arch/arm/mach-nxp3200/board_revisions.h>
 
 #if	(0)
 #define DBGOUT(msg...)		{ printk(KERN_INFO "nand: " msg); }

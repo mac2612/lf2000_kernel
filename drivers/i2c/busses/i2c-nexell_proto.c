@@ -55,7 +55,7 @@
 #include <mach/nxp3200.h>
 #include <mach/soc.h>
 #include <mach/iomap.h>
-#include <../board_revisions.h>
+#include <mach/board_revisions.h>
 
 #endif
 

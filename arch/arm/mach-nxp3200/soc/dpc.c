@@ -34,9 +34,9 @@
 #include <mach/soc.h>
 #include <mach/dpc.h>
 #include <mach/lf2000_lcd.h>
+#include <mach/board_revisions.h>
 
 #include "dpc_dev.h"
-#include "../board_revisions.h"
 
 extern u_int cpu_get_clock_hz(cfg_sys_clksrc clk);
 

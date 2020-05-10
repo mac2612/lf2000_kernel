@@ -29,6 +29,7 @@
 #include <linux/lf2000/gpio.h>
 #include <mach/adc.h>
 #include <mach/soc.h>
+#include <mach/board_revisions.h>
 #include <asm/io.h>
 #include <asm/system_info.h>
 
@@ -38,8 +39,6 @@
 	/* NOTE: this is needed to resolve this expression: 
 	 *		 (struct touch *)dev->p->driver_data
 	 */
-/* FIXME */
-#include <../../../arch/arm/mach-nxp3200/board_revisions.h>
 
 static void lf2k_gpio_configure_pin(enum gpio_resource gpio, 
 									uint pinfunc,

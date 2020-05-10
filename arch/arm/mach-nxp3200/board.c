@@ -22,8 +22,8 @@
 #include <linux/gpio.h>
 #include <mach/adc.h>
 #include <mach/soc.h>
+#include <mach/board_revisions.h>
 
-#include "board_revisions.h"
 #include <asm/system.h>	/* system_rev global */
 #include <mach/platform_id.h>
 #include <mach/lf2000_lcd.h>

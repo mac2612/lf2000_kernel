@@ -14,7 +14,7 @@
 #include <mach/iomap.h>
 #include <mach/devices.h>
 #include <mach/nxp3200.h>
-#include "board_revisions.h"
+#include <mach/board_revisions.h"
 
 /*------------------------------------------------------------------------------
  * NOR Information

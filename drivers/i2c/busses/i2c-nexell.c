@@ -37,7 +37,7 @@
 #include <mach/platform.h>
 #include <mach/devices.h>
 #include <mach/soc.h>
-#include <../board_revisions.h>
+#include <mach/board_revisions.h>
 
 #if (0)
 #define DBGOUT(msg...)		{ printk(KERN_INFO "i2c: " msg); }

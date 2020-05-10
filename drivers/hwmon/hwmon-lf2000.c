@@ -49,6 +49,7 @@
 #include <mach/lfp100.h>
 #include <mach/adc.h>
 #include <mach/soc.h>
+#include <mach/board_revisions.h>
 
 #ifdef CONFIG_ARCH_LF1000
 #include <mach/adc.h>
@@ -62,8 +63,6 @@
 #include <asm/uaccess.h>
 #include <asm/system_info.h>
 
-/* FIXME */
-#include "../../arch/arm/mach-nxp3200/board_revisions.h"
 
 /*
  * power hardware

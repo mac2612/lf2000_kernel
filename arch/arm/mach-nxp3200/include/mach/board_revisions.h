@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-nxp3200/board_revisions.h
+ * arch/arm/mach-nxp3200/include/mach/board_revisions.h
  *
  * LeapFrog board Revisions
  *

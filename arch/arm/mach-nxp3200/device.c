@@ -47,7 +47,7 @@
 #include <mach/platform_id.h>
 #include <mach/soc.h>
 #include <mach/spi.h>
-#include "board_revisions.h"
+#include <mach/board_revisions.h>
 
 /* PCA9555 GPIO Extender */
 #include <linux/i2c/pca953x.h>

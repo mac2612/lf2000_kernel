@@ -45,8 +45,8 @@
 #include <mach/devices.h>
 #include <mach/soc.h>
 #include <mach/lf2000_vip.h>
-/* FIXME */
-#include <../../../arch/arm/mach-nxp3200/board_revisions.h>
+#include <mach/board_revisions.h>
+
 
 #include "lf2000_vip.h"
 

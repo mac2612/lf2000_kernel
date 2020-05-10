@@ -38,10 +38,9 @@
 
 /* nexell soc headers */
 #include <mach/soc.h>
+#include <mach/board_revisions.h>
 
 #include "zforce.h"
-/* FIXME */
-#include <../../../arch/arm/mach-nxp3200/board_revisions.h>
 
 /*
  * This driver adheres to revision 4.3 of the "Hardware and Software Interface"

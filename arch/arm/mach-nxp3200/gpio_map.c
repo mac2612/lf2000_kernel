@@ -22,7 +22,7 @@
 #include <asm/system.h>
 
 #include <mach/platform.h>
-#include "board_revisions.h"
+#include <mach/board_revisions.h>
 
 int gpio_map[GPIO_NUMBER_VALUES];
 
