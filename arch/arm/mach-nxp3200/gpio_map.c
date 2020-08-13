@@ -1591,3 +1591,26 @@ extern unsigned lf2000_gpio_l2p( struct gpio_chip* chip, unsigned offset )
 	return LF2000_GPIO_PORT_NONE;
 }
 
+extern void lf2000_gpio_check_didjfi(void) 
+{
+	/* Check to see if an OEM cartridge is inserted. If not, we claim
+	CARTRIDGE DETECT as an output pin. This is used to drive the EN pin on
+	the didj-fi. We *DON'T* want to do this if an OEM cartridge is here, as
+	in that case the CARTRIDGE_DETECT line is shorted to ground and driving it
+	high as an output could (theoretically) burn out the pin on the SOC. */
+        gpio_request(CARTRIDGE_DETECT,"Didj-Fi EN");
+        gpio_set_function(CARTRIDGE_DETECT, 0);
+        gpio_direction_input(CARTRIDGE_DETECT);
+
+		if(gpio_get_value(CARTRIDGE_DETECT)) {
+		  printk("%s.%s:%d No OEM cart detected; CARTRIDGE_DETECT in didj-fi mode\n",
+		     __FILE__, __func__, __LINE__),
+		  gpio_direction_output(CARTRIDGE_DETECT, 1);
+
+		} else {
+		  printk("%s.%s:%d OEM cart detected; CARTRIDGE_DETECT in normal mode\n",
+			__FILE__, __func__, __LINE__);
+		  gpio_free(CARTRIDGE_DETECT);
+		}
+		return;
+}

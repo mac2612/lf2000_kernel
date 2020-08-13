@@ -185,12 +185,15 @@ static struct gpio_chip lf2000_physical_gpiochip = {
 };
 
 extern void lf2000_gpio_init_map(void);
+extern void lf2000_gpio_check_didjfi(void); 
+
 void __init lf2000_gpio_init(void)
 {
 	spin_lock_init(&gpio_lock);
 	lf2000_gpio_init_map();
 	gpiochip_add(&lf2000_virtual_gpiochip);
 	gpiochip_add(&lf2000_physical_gpiochip);
+	lf2000_gpio_check_didjfi();
 }
 
 
