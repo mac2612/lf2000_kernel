@@ -1436,6 +1436,9 @@ static int __devinit cl7700_sdhc_probe(struct platform_device *pdev)
 	mmc->f_min	= 400000;
 	mmc->f_max	= CCLK_IN_FREQ;
 	mmc->caps	= MMC_CAP_4_BIT_DATA;
+    // No CD line available in the cartridge port SD bus, we have to poll.
+    mmc->caps       |=  MMC_CAP_NEEDS_POLL;
+
 #if CCLK_IN_FREQ > 25000000
 	mmc->caps	|=  MMC_CAP_SD_HIGHSPEED | MMC_CAP_MMC_HIGHSPEED;
 #endif
