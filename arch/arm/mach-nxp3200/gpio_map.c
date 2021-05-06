@@ -17,6 +17,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include <linux/export.h>
 #include <linux/gpio.h>
 #include <linux/lf2000/gpio.h>
 #include <asm/system.h>
@@ -1590,6 +1591,7 @@ extern unsigned lf2000_gpio_l2p( struct gpio_chip* chip, unsigned offset )
 	}
 	return LF2000_GPIO_PORT_NONE;
 }
+EXPORT_SYMBOL(lf2000_gpio_l2p);
 
 extern void lf2000_gpio_check_didjfi(void) 
 {
