@@ -67,6 +67,9 @@
 DECLARE_WAIT_QUEUE_HEAD(WaitQueue_sdhc);
 #endif
 
+static int polling=0;
+module_param(polling,int,0660);
+
 struct sdhc_host_io {
 	int 	detect;		/* card detect io pad */
 	int		wprotect;	/* card write protect io pad */
@@ -1437,7 +1440,9 @@ static int __devinit cl7700_sdhc_probe(struct platform_device *pdev)
 	mmc->f_max	= CCLK_IN_FREQ;
 	mmc->caps	= MMC_CAP_4_BIT_DATA;
     // No CD line available in the cartridge port SD bus, we have to poll.
-    mmc->caps       |=  MMC_CAP_NEEDS_POLL;
+	if (polling) {
+    	mmc->caps       |=  MMC_CAP_NEEDS_POLL;
+	}
 
 #if CCLK_IN_FREQ > 25000000
 	mmc->caps	|=  MMC_CAP_SD_HIGHSPEED | MMC_CAP_MMC_HIGHSPEED;
