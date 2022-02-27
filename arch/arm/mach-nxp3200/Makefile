@@ -22,7 +22,7 @@ obj-$(CONFIG_LF2000_IDCT)	+= lf2000_idct.o
 
 obj-$(CONFIG_SYSFS)	+=	board.o
 
-include $(srctree)/arch/arm/mach-nxp3200/libproto.mk
+include arch/arm/mach-nxp3200/libproto.mk
 
 ################################################################################
 #	Build options for prototype
