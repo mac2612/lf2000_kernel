@@ -4,7 +4,7 @@
 # Makefile for the Nexell CPU
 
 obj-y	:=	cpu.o nxp3200.o timer.o irq.o device.o flash.o alive.o board_pm.o board_gpio.o
-obj-y   +=  prototype/
+obj-y   +=  prototype/module/
 obj-y	+=	soc/
 obj-y	+=	vr5/
 obj-y	+=	keyboard.o
