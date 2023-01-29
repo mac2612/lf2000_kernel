@@ -63,19 +63,7 @@
  */
 
 #define DRIVER_DESC		"Ethernet Gadget"
-
-#ifdef CONFIG_ARCH_NXP3200
-#include <mach/platform_id.h>
-#define DRIVER_VERSION	        "Veterans Day 2009"
-#define PRODUCT_ID_STRING       "Leapster Explorer"
-#define PRODUCT_ID_STRING_LUCY	"Leapster GS Explorer"
-#define PRODUCT_ID_STRING_RIO	"LeapPad Ultra"
-#define PRODUCT_ID_STRING_VALENCIA "LeapPad Explorer"
-#define MANUFACTURER_ID_STRING  "LeapFrog Enterprises, Inc."
-#define SERIAL_ID_STRING	""
-#else   
 #define DRIVER_VERSION		"Memorial Day 2008"
-#endif  //CONFIG_ARCH_NXP3200
 
 #ifdef USB_ETH_RNDIS
 #define PREFIX			"RNDIS/"
@@ -134,22 +122,11 @@ static inline bool has_rndis(void)
  * Instead:  allocate your own, using normal USB-IF procedures.
  */
 
-#ifdef CONFIG_ARCH_NXP3200
-/* Match Belcarra Windows Driver */
-#define CDC_VENDOR_NUM		0x0f63	/* LeapFrog */
-#define CDC_PRODUCT_NUM		0x0010	/* Linux-USB Ethernet Gadget */
-#define CDC_PRODUCT_NUM_MADRID		0x0011
-#define CDC_PRODUCT_NUM_LUCY		0x0012
-#define CDC_PRODUCT_NUM_VALENCIA	0x0013
-#define CDC_PRODUCT_NUM_RIO		0x0014
-
-#else
 /* Thanks to NetChip Technologies for donating this product ID.
  * It's for devices with only CDC Ethernet configurations.
  */
 #define CDC_VENDOR_NUM		0x0525	/* NetChip */
 #define CDC_PRODUCT_NUM		0xa4a1	/* Linux-USB Ethernet Gadget */
-#endif
 
 /* For hardware that can't talk CDC, we use the same vendor ID that
  * ARM Linux has used for ethernet-over-usb, both with sa1100 and
@@ -223,16 +200,7 @@ static const struct usb_descriptor_header *otg_desc[] = {
 
 #define STRING_MANUFACTURER_IDX		0
 #define STRING_PRODUCT_IDX		1
-#define STRING_SERIAL_IDX		2
 
-#ifdef CONFIG_ARCH_NXP3200
-static struct usb_string strings_dev[] = {
-	[STRING_MANUFACTURER_IDX].s = MANUFACTURER_ID_STRING,
-	[STRING_PRODUCT_IDX].s      = PRODUCT_ID_STRING,
-	[STRING_SERIAL_IDX].s	    = SERIAL_ID_STRING,
-	{  } /* end of list */
-};
-#else
 static char manufacturer[50];
 
 static struct usb_string strings_dev[] = {
@@ -240,7 +208,6 @@ static struct usb_string strings_dev[] = {
 	[STRING_PRODUCT_IDX].s = PREFIX DRIVER_DESC,
 	{  } /* end of list */
 };
-#endif
 
 static struct usb_gadget_strings stringtab_dev = {
 	.language	= 0x0409,	/* en-us */
@@ -356,30 +323,6 @@ static int __init eth_bind(struct usb_composite_dev *cdev)
 		device_desc.bNumConfigurations = 2;
 	}
 
-#ifdef CONFIG_ARCH_NXP3200
-	//Platform specific usb ids
-	switch(get_leapfrog_platform())
-	{
-	case LUCY:
-		device_desc.idProduct = cpu_to_le16(CDC_PRODUCT_NUM_LUCY);
-		strings_dev[STRING_PRODUCT_IDX].s = PRODUCT_ID_STRING_LUCY;
-		break;
-	case RIO:
-		device_desc.idProduct = cpu_to_le16(CDC_PRODUCT_NUM_RIO);
-		strings_dev[STRING_PRODUCT_IDX].s = PRODUCT_ID_STRING_RIO;
-		break;
-	case VALENCIA:
-		device_desc.idProduct = cpu_to_le16(CDC_PRODUCT_NUM_VALENCIA);
-		strings_dev[STRING_PRODUCT_IDX].s = PRODUCT_ID_STRING_VALENCIA;
-		break;
-	case UNKNOWN:
-	default:
-		device_desc.idProduct = cpu_to_le16(CDC_PRODUCT_NUM);
-		strings_dev[STRING_PRODUCT_IDX].s = PRODUCT_ID_STRING;
-		break;
-	}
-#endif
-
 	gcnum = usb_gadget_controller_number(gadget);
 	if (gcnum >= 0)
 		device_desc.bcdDevice = cpu_to_le16(0x0300 | gcnum);
@@ -402,11 +345,9 @@ static int __init eth_bind(struct usb_composite_dev *cdev)
 	 */
 
 	/* device descriptor strings: manufacturer, product */
-#ifndef CONFIG_ARCH_NXP3200
 	snprintf(manufacturer, sizeof manufacturer, "%s %s with %s",
 		init_utsname()->sysname, init_utsname()->release,
 		gadget->name);
-#endif
 	status = usb_string_id(cdev);
 	if (status < 0)
 		goto fail;
@@ -470,3 +411,4 @@ static void __exit cleanup(void)
 	usb_composite_unregister(&eth_driver);
 }
 module_exit(cleanup);
+
